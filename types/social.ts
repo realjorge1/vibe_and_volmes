@@ -120,3 +120,17 @@ export interface SocialFeed {
   activePlatform: Platform;
   week: number;
 }
+
+/**
+ * A specific story moment posted to the feed (an activity result, a family
+ * drama, an ending), as opposed to the weekly template chatter. `text` may use
+ * `{playerName}` and `{npc}`.
+ */
+export interface StoryBeat {
+  sentiment: PostSentiment;
+  /** Which kind of account posts it. */
+  from: AccountType;
+  text: string;
+  /** Optional hashtag (without #) pushed onto the trending board. */
+  trend?: string;
+}

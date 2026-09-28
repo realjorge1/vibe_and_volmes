@@ -82,6 +82,15 @@ export const MIN_START_AGE = 18;
 /** Start age given to saves that predate age. */
 export const DEFAULT_START_AGE = 21;
 
+// ─── Life activities ──────────────────────────────────────────────────────
+/** Activities per week, so the menu flavors a week instead of being ground. */
+export const ACTIVITIES_PER_WEEK = 3;
+/**
+ * Most an artist can EARN from activities in one week (gross, before costs).
+ * Money is one economy: no activity outcome can exceed this.
+ */
+export const ACTIVITY_EARNINGS_CAP_PER_WEEK = 2_500;
+
 // Track quality floor/ceiling multipliers
 export const TRACK_QUALITY_WEIGHTS = {
   talent: 0.30,

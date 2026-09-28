@@ -50,6 +50,15 @@ export default function GameLayout() {
           }}
         />
         <Tabs.Screen
+          name="life"
+          options={{
+            title: 'Life',
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="person-outline" color={color} size={size} />
+            ),
+          }}
+        />
+        <Tabs.Screen
           name="empire"
           options={{
             title: 'Empire',

@@ -2,19 +2,13 @@ import { usePlayerStore } from '../store/playerStore';
 import { useGameStore } from '../store/gameStore';
 import { useMusicStore } from '../store/musicStore';
 import { useSocialStore } from '../store/socialStore';
-import { useRelationshipStore } from '../store/relationshipStore';
-import { useAudioStore } from '../store/audioStore';
 import { useLabelStore } from '../store/labelStore';
 import { useTourStore } from '../store/tourStore';
 import { usePressStore } from '../store/pressStore';
 import { useCareerStore } from '../store/careerStore';
 import { useRivalryStore } from '../store/rivalryStore';
-import { useCultureStore } from '../store/cultureStore';
-import { useProgressionStore } from '../store/progressionStore';
 import { useLiveStore } from '../store/liveStore';
-import { useStatusStore } from '../store/statusStore';
 import { usePlanStore } from '../store/planStore';
-import { useCommunityStore } from '../store/communityStore';
 import { useWorldStore } from '../store/worldStore';
 import { awardWeeklyXp } from './progression/xpEngine';
 import type { SocialReactionType } from '../types/events';
@@ -28,9 +22,10 @@ import { runPhase3Week } from './simulation/phase3Tick';
 import { getCultureBias } from './culture/cultureEngine';
 import { enhanceCurrentFeedAsync } from '../ai/pipelines/socialEnhancer';
 import { pruneCache } from '../ai/cache/genCache';
-import { useSettingsStore } from '../store/settingsStore';
 import { weeklyStatDecay } from '../utils/statHelpers';
 import { ageAtWeek, birthdayBeat, birthdayLines, lifeStageForAge } from './life/age';
+import { useActivityStore } from '../store/activityStore';
+import { saveAll } from './persistence';
 
 function buildEventContext(): EventContext {
   const player = usePlayerStore.getState().player!;
@@ -152,29 +147,6 @@ export function initializeFirstWeek(): void {
   saveAll();
 }
 
-function saveAll(): void {
-  usePlayerStore.getState().save();
-  useGameStore.getState().saveGameState();
-  useMusicStore.getState().save();
-  useSocialStore.getState().save();
-  useRelationshipStore.getState().save();
-  useAudioStore.getState().save();
-  useLabelStore.getState().save();
-  useTourStore.getState().save();
-  usePressStore.getState().save();
-  useCareerStore.getState().save();
-  useRivalryStore.getState().save();
-  useSettingsStore.getState().save();
-  useCultureStore.getState().save();
-  useProgressionStore.getState().save();
-  useLiveStore.getState().save();
-  useStatusStore.getState().save();
-  usePlanStore.getState().save();
-  useCommunityStore.getState().save();
-  useWorldStore.getState().saveWorld();
-  // Premium entitlements self-save on mutation (own table), like metaStore.
-}
-
 /**
  * End-of-week transition. The player has resolved this week's events;
  * roll the world forward and stage the next week.
@@ -183,9 +155,14 @@ function saveAll(): void {
  * events so social reflects what just happened.
  */
 export function runWeekTransition(
-  recentReactions: SocialReactionType[],
-  recentEventIds: string[]
+  eventReactions: SocialReactionType[],
+  eventIds: string[]
 ): void {
+  // Activities done this week feed the same social mood as the events.
+  const activity = useActivityStore.getState().drainPending();
+  const recentReactions = [...eventReactions, ...activity.reactions];
+  const recentEventIds = [...eventIds, ...activity.storyIds];
+
   const player = usePlayerStore.getState();
   const game = useGameStore.getState();
   const music = useMusicStore.getState();

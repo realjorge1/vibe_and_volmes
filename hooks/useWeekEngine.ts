@@ -4,6 +4,7 @@ import { useGameStore } from '../store/gameStore';
 import { applyConsequence } from '../systems/events/consequenceApplicator';
 import { getAvailableChoices } from '../systems/events/eventEngine';
 import { runWeekTransition } from '../systems/weekEngine';
+import { saveProgress } from '../systems/persistence';
 
 /**
  * Drives the week loop: resolving each decision, then rolling the world
@@ -61,6 +62,8 @@ export function useWeekEngine() {
       flavorText: result.flavorText,
       category: event.category,
     });
+    // Persist the decision now, so a relaunch mid-week resumes here.
+    saveProgress();
   }, []);
 
   /** Roll the world to next week using everything that just happened. */

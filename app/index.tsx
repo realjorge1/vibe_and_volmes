@@ -22,6 +22,7 @@ import { usePlanStore } from '../store/planStore';
 import { usePremiumStore } from '../store/premiumStore';
 import { useCommunityStore } from '../store/communityStore';
 import { useWorldStore } from '../store/worldStore';
+import { useActivityStore } from '../store/activityStore';
 import { refreshCommunity } from '../systems/community';
 import { bootstrapWorld } from '../systems/weekEngine';
 import { loadBudget } from '../ai/budget/ledger';
@@ -51,6 +52,7 @@ export default function Index() {
     useStatusStore.getState().load();
     usePlanStore.getState().load();
     useCommunityStore.getState().load();
+    useActivityStore.getState().load();
     // Account-level premium entitlements (own table; survive retirement).
     usePremiumStore.getState().load();
     usePremiumStore.getState().ensureStarter();

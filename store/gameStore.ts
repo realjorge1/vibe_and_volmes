@@ -1,6 +1,20 @@
 import { create } from 'zustand';
 import type { GameEvent, EventHistoryEntry, EventCategory } from '../types/events';
 import { saveData, loadData, logEvent } from '../database/gameRepository';
+import { getEventById } from '../data/events';
+
+/** Sentinel eventId for notes the week transition writes (phase 3, world). */
+export const SIM_EVENT_ID = 'phase3-sim';
+/** eventId prefix for story lines from player actions outside the slate. */
+export const STORY_PREFIX = 'story:';
+
+/**
+ * True for Deck lines that are not the resolution of a slated event. The
+ * Deck pairs the other entries with `activeEvents` by position.
+ */
+export function isNoteEntry(entry: EventHistoryEntry): boolean {
+  return entry.eventId === SIM_EVENT_ID || entry.eventId.startsWith(STORY_PREFIX);
+}
 
 interface GameStoreState {
   week: number;
@@ -25,6 +39,12 @@ interface GameStoreActions {
   resolveCurrentEvent: (choiceId: string, entry: EventHistoryEntry) => void;
   nextPendingEvent: () => GameEvent | null;
   addWeekSummaryNotes: (notes: string[], category?: EventCategory) => void;
+  /**
+   * A line in the Deck for something the player did outside the week's
+   * event slate (an activity, a person interaction…). `source` names the
+   * system, for filtering history later.
+   */
+  addStoryLine: (text: string, category: EventCategory, source: string) => void;
   saveGameState: () => void;
   loadGameState: () => void;
   reset: () => void;
@@ -117,7 +137,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (notes.length === 0) return;
     const { week, lastWeekSummary, historyLog } = get();
     const entries: EventHistoryEntry[] = notes.map((text) => ({
-      eventId: 'phase3-sim',
+      eventId: SIM_EVENT_ID,
       choiceId: 'sim',
       week,
       flavorText: text,
@@ -126,6 +146,21 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({
       lastWeekSummary: [...lastWeekSummary, ...entries],
       historyLog: [...entries, ...historyLog].slice(0, 100),
+    });
+  },
+
+  addStoryLine(text, category, source) {
+    const { week, lastWeekSummary, historyLog } = get();
+    const entry: EventHistoryEntry = {
+      eventId: `${STORY_PREFIX}${source}`,
+      choiceId: 'story',
+      week,
+      flavorText: text,
+      category,
+    };
+    set({
+      lastWeekSummary: [...lastWeekSummary, entry],
+      historyLog: [entry, ...historyLog].slice(0, 100),
     });
   },
 
@@ -138,12 +173,22 @@ export const useGameStore = create<GameStore>((set, get) => ({
       eventHistory: s.eventHistory,
       eventCooldowns: s.eventCooldowns,
       historyLog: s.historyLog,
+      // The week in progress, so a relaunch resumes mid-week instead of
+      // dropping the pending decisions and this week's Deck lines.
+      activeEventIds: s.activeEvents.map((e) => e.id),
+      pendingEventIndex: s.pendingEventIndex,
+      lastWeekSummary: s.lastWeekSummary,
     });
   },
 
   loadGameState() {
-    const saved = loadData<Partial<GameStoreState>>('game');
+    const saved = loadData<
+      Partial<GameStoreState> & { activeEventIds?: string[] }
+    >('game');
     if (saved) {
+      const activeEvents = (saved.activeEventIds ?? [])
+        .map((id) => getEventById(id))
+        .filter((e): e is GameEvent => e !== undefined);
       set({
         week: saved.week ?? 1,
         phase: saved.phase ?? 'playing',
@@ -151,6 +196,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
         eventHistory: saved.eventHistory ?? [],
         eventCooldowns: saved.eventCooldowns ?? {},
         historyLog: saved.historyLog ?? [],
+        activeEvents,
+        // An event removed from the catalog since the save shrinks the
+        // slate; never point past its end.
+        pendingEventIndex: Math.min(saved.pendingEventIndex ?? 0, activeEvents.length),
+        lastWeekSummary: saved.lastWeekSummary ?? [],
       });
     }
   },

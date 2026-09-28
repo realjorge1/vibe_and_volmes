@@ -48,7 +48,7 @@ community charts to bundled data.
 
 | Path | What |
 | --- | --- |
-| `app/(game)/` | The tabs: Deck (the week loop), Studio, Social, Empire |
+| `app/(game)/` | The tabs: Deck (the week loop), Studio, Social, Life, Empire |
 | `app/*.tsx` | Onboarding and the modals (stats, chronicle, plan, store…) |
 | `systems/weekEngine.ts` | `runWeekTransition`: the weekly heartbeat every system hangs off |
 | `systems/` | Pure engines, one folder per area (events, charts, world, culture…) |
