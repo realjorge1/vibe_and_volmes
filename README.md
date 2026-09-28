@@ -1,50 +1,77 @@
-# Welcome to your Expo app 👋
+# Vibe & Volumes
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A text-first music career life sim for iOS and Android. You play one artist from
+open mics to legacy: every tap of **Advance** is one in-game week, every week
+brings decisions, and everything you do lands as a line in your career story.
+The flow is BitLife's (one clock, one button, a situation on every tap); the
+depth is the game's own — a recording Studio, a label/tour/PR industry, a living
+world of NPC artists, shifting culture eras and a fake internet that reacts to
+you.
 
-## Get started
+Built with Expo (React Native), Expo Router, Zustand and SQLite. The whole sim
+runs on the device; the optional backend only proxies AI text and community
+charts.
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Run it
 
 ```bash
-npm run reset-project
+npm install          # .npmrc sets legacy-peer-deps; see the note in that file
+npm run android      # dev build (recommended) — or: npm run ios
+npx expo start       # Expo Go also works; the Studio falls back to expo-audio
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+The Studio's live DJ effects use `react-native-audio-api`, which only exists in
+a dev or release build. In Expo Go the Studio still plays and records through
+`expo-audio`, without the effects.
 
-## Learn more
+## Test it
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+npx tsc --noEmit     # typecheck
+npm test             # every systems/**/__tests__/*.test.ts, via node:test + tsx
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+Tests cover the pure engines (charts, career stages, the NPC world, the daily
+plan, the premium catalog, social). Put new tests under
+`systems/<area>/__tests__/` so `npm test` picks them up.
 
-## Join the community
+## Backend (optional)
 
-Join our community of developers creating universal apps.
+```bash
+npm run backend      # Express on :8787, see backend/README.md
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+The app is fully playable without it: AI text falls back to local templates and
+community charts to bundled data.
+
+## Where things live
+
+| Path | What |
+| --- | --- |
+| `app/(game)/` | The tabs: Deck (the week loop), Studio, Social, Empire |
+| `app/*.tsx` | Onboarding and the modals (stats, chronicle, plan, store…) |
+| `systems/weekEngine.ts` | `runWeekTransition`: the weekly heartbeat every system hangs off |
+| `systems/` | Pure engines, one folder per area (events, charts, world, culture…) |
+| `systems/simulation/` | The shared weekly influence bundle and player-action layer |
+| `store/` | Zustand stores, one per area, each with `load` / `save` / `reset` |
+| `data/` | Content as data: events, archetypes, beats, eras, catalogs |
+| `types/` | Shared types |
+| `database/` | SQLite save slots (`save_data`) plus the cross-save meta profile |
+| `ai/` | Optional AI text layer over the deterministic sim |
+| `audio/` | Studio playback, recording, FX and scoring |
+| `lifesim/` | The shelved Sims-style "Crib" — hidden, kept only for salvage |
+
+## Rules for new features
+
+1. **One clock: the week.** No new real-time clocks.
+2. **If it doesn't show up in the story, it doesn't ship.** Every action writes
+   a line into the Deck.
+3. **Big moments reach the internet** — the social feed and the Chronicle.
+4. **Mechanics go through the pipeline** (`systems/simulation/`); UI never
+   writes stats directly.
+5. **Content is data.** New events, activities or endings are rows in `data/`.
+6. **One economy.** Every money source is capped.
+7. **Snackable sessions** — median 90–180 s; the Studio is the opt-in exception.
+8. **Cosmetic-only store** (`docs/passive-life/monetization-framework.md`).
+
+Regenerate the bundled beats with `node scripts/generate-beats.mjs`.

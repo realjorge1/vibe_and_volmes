@@ -69,6 +69,8 @@ interface LifeSimStore {
   init: () => void;
   save: () => void;
   resetLifeSim: () => void;
+  /** Drop the in-memory world WITHOUT saving (retirement wipes the save). */
+  reset: () => void;
   startDriver: () => void;
   stopDriver: () => void;
 
@@ -141,6 +143,17 @@ export const useLifeSimStore = create<LifeSimStore>((set, get) => ({
     const world = createWorld(getArtistIdentity() ?? undefined);
     set({ world, version: get().version + 1, pie: null, buyDefId: null, buildTool: null });
     saveData('lifesim_world', world);
+  },
+
+  reset() {
+    // Not stopDriver(): that saves, which would write the old world back
+    // into the save we are wiping.
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+    saveCounter = 0;
+    set({ world: null, version: get().version + 1, pie: null, buyDefId: null, buildTool: null });
   },
 
   startDriver() {
