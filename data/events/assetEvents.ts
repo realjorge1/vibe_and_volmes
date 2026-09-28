@@ -6,13 +6,14 @@ import type { GameEvent } from '../../types/events';
  * item matching its `owns_asset` trigger — what a burglar would take — and
  * `{home}` / `{Home}` is where the artist lives.
  *
- * Salvaged from the shelved Crib (lifesim/): the burglar who takes the
- * priciest loose valuable unless an alarm brings the police (who pay a
- * reward), the repo man who comes when the bills go unpaid, and house fires.
+ * Salvaged from the retired Crib life-sim (lifesim/, in git history before
+ * Phase 4 deleted it): the burglar who takes the priciest loose valuable
+ * unless an alarm brings the police (who pay a reward), the repo man who
+ * comes when the bills go unpaid, and house fires.
  * The Crib's office "chance cards" live on as the day-job events at the end.
  */
 export const ASSET_EVENTS: GameEvent[] = [
-  // ─── Burglars (lifesim/core/services.ts) ───────────────────────────────────
+  // ─── Burglars (from the Crib's services) ──────────────────────────────────
   {
     id: 'asset-burglary',
     category: 'drama',
@@ -378,7 +379,7 @@ export const ASSET_EVENTS: GameEvent[] = [
     cooldown: 24,
   },
 
-  // ─── Day job (the Crib's chance cards, lifesim/data/careers.ts) ───────────
+  // ─── Day job (the Crib's office chance cards) ─────────────────────────────
   {
     id: 'dayjob-speech',
     category: 'opportunity',

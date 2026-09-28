@@ -67,20 +67,6 @@ export default function GameLayout() {
             ),
           }}
         />
-        {/* The Crib (lifesim/) is shelved: the game is moving to a BitLife-style
-            flow, and the real-time home sim ran its own clock and shared the
-            career wallet. Hidden, not deleted — restore by removing `href: null`.
-            While hidden the screen never mounts, so its sim driver never runs. */}
-        <Tabs.Screen
-          name="crib"
-          options={{
-            href: null,
-            title: 'Crib',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="home-outline" color={color} size={size} />
-            ),
-          }}
-        />
       </Tabs>
 
       <NotificationStack />

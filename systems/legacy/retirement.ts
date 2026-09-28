@@ -20,7 +20,6 @@ import { useStatusStore } from '../../store/statusStore';
 import { usePlanStore } from '../../store/planStore';
 import { useCommunityStore } from '../../store/communityStore';
 import { useWorldStore } from '../../store/worldStore';
-import { useLifeSimStore } from '../../store/lifeSimStore';
 import { useActivityStore } from '../../store/activityStore';
 import { usePeopleStore } from '../../store/peopleStore';
 
@@ -46,9 +45,6 @@ export function retireCareer(): RetirementResult {
   const dossier = buildDossier(week);
 
   const minted = useMetaStore.getState().recordRetirement(dossier);
-
-  // Stop the Crib's minute driver BEFORE the wipe so no tick re-saves it.
-  useLifeSimStore.getState().reset();
 
   // Wipe persisted per-save data (NOT meta_profile — see gameRepository).
   clearAllData();

@@ -59,7 +59,6 @@ community charts to bundled data.
 | `database/` | SQLite save slots (`save_data`) plus the cross-save meta profile |
 | `ai/` | Optional AI text layer over the deterministic sim |
 | `audio/` | Studio playback, recording, FX and scoring |
-| `lifesim/` | The shelved Sims-style "Crib" — hidden, kept only for salvage |
 
 ## Rules for new features
 
