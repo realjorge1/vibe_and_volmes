@@ -20,6 +20,7 @@ import {
 import { publishStoryBeat } from '../social/storyPost';
 import { pick } from '../../utils/random';
 import { uid } from '../../utils/id';
+import { FAMOUS_PARENT_TAG } from '../meta/applyHeir';
 
 /**
  * The store-touching side of People: giving a new career its family,
@@ -31,11 +32,16 @@ import { uid } from '../../utils/id';
 /** A partner who falls this far leaves on their own. */
 const PARTNER_LEAVES_AT = -50;
 
-/** Give the career its family, once. Writes the family's intro to the Deck. */
+/**
+ * Give the career its family, once. Writes the family's intro to the Deck.
+ * An heir already has theirs (systems/meta/applyHeir.ts), even if it is
+ * only the name.
+ */
 export function ensureFamily(): void {
   const player = usePlayerStore.getState().player;
   const people = usePeopleStore.getState();
   if (!player || people.people.length > 0) return;
+  if (useGameStore.getState().hasTag(FAMOUS_PARENT_TAG)) return;
   const week = useGameStore.getState().week;
   const { people: family, intro } = generateFamily(FAMILIES[player.archetype], week);
   people.setPeople(family);
@@ -91,6 +97,7 @@ function birth(week: number, lines: string[]): void {
     sinceWeek: week,
     lastSeenWeek: week,
     bornWeek: week,
+    otherParentId: due.otherParentId ?? undefined,
   };
   store.addPerson(child);
   store.setPendingBirth(null);

@@ -1,5 +1,6 @@
 import type { LegacyTier, IdentityLabel } from './legacy';
-import type { PlayerStats } from './player';
+import type { Gender, MusicGenre, PlayerStats } from './player';
+import type { EndingId } from './life';
 
 // ─── Cross-Save Meta-Progression (Phase 5 foundation) ─────────────────────
 //
@@ -47,6 +48,49 @@ export interface RetiredCareer {
   weeksActive: number;
   peakFans: number;
   retiredAtRealTime: number;
+  /** How the career ended (older records predate endings). */
+  ending?: EndingId;
+}
+
+/** Someone from the last career who is family to the heir. */
+export interface HeirFamilyMember {
+  name: string;
+  role: 'parent' | 'sibling';
+  title: string;
+  affinity: number;
+  traits: string[];
+}
+
+/**
+ * "Continue as your child": everything the next career inherits, written to
+ * the meta profile BEFORE retirement wipes the save (only the meta profile
+ * survives), then consumed by onboarding.
+ */
+export interface HeirInheritance {
+  /** 2 for the first child run, 3 for a grandchild… */
+  generation: number;
+  childName: string;
+  surname: string;
+  gender: Gender;
+  startAge: number;
+  city: string;
+  /** The genre leaning; onboarding pre-selects it. */
+  genre: MusicGenre;
+  money: number;
+  /** Fans who follow the name into the next generation. */
+  fans: number;
+  /** The family's rivals, who remember. */
+  rivalIds: string[];
+  /** Picked automatically from the parent's identity. */
+  bloodlineId: string | null;
+  parent: {
+    artistName: string;
+    identity: IdentityLabel;
+    identityTitle: string;
+    legacyTier: LegacyTier;
+    ending: EndingId;
+  };
+  family: HeirFamilyMember[];
 }
 
 export interface MetaProfile {
@@ -61,4 +105,8 @@ export interface MetaProfile {
   /** Highest tier ever reached, for UI bragging + bloodline gating. */
   bestTier: LegacyTier;
   totalCareers: number;
+  /** Identity ribbons collected across careers, with how many times. */
+  identitiesEarned: Partial<Record<IdentityLabel, number>>;
+  /** Set when the last career chose to continue as a child. */
+  pendingHeir: HeirInheritance | null;
 }

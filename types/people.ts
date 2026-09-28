@@ -52,6 +52,8 @@ export interface Person {
   bond?: PartnerBond;
   /** Children only: the week they were born (age is derived). */
   bornWeek?: number;
+  /** Children only: the artist's partner at the time, if any. */
+  otherParentId?: string;
   /** Weekly money while affinity holds (e.g. a Rich Kid's parents). */
   allowance?: number;
 }

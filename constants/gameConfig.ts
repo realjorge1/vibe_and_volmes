@@ -114,6 +114,14 @@ export const NEGLECT: Record<'partner' | 'child' | 'family' | 'other', { graceWe
 };
 export const SUPPORTIVE_FLOOR = 20;
 
+// ─── Endings & the next generation ────────────────────────────────────────
+/** Share of the money a child inherits (the rest: estate, taxes, family). */
+export const HEIR_MONEY_SHARE = 0.4;
+export const HEIR_MONEY_CAP = 250_000;
+/** Share of the parent's peak fans who follow the name to the child. */
+export const HEIR_FANS_SHARE = 0.05;
+export const HEIR_FANS_CAP = 200_000;
+
 // Track quality floor/ceiling multipliers
 export const TRACK_QUALITY_WEIGHTS = {
   talent: 0.30,

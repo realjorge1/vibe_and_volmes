@@ -36,6 +36,7 @@ export function toStoryCard(d: CareerDossier): StoryCard {
       : getEra(d.erasLived[0] ?? 'blog-era').label;
 
   const statLines = [
+    ...(d.ending ? [`${d.ending.label} at ${d.ending.age}`] : []),
     `Peak fans: ${d.peakFans.toLocaleString('en-US')}`,
     `Lifetime earnings: $${Math.round(d.lifetimeEarnings).toLocaleString('en-US')}`,
     `Weeks active: ${d.weeksActive}${d.comebackCount ? ` · ${d.comebackCount} comeback${d.comebackCount === 1 ? '' : 's'}` : ''}`,
@@ -52,7 +53,7 @@ export function toStoryCard(d: CareerDossier): StoryCard {
     '',
     `“${signature}”`,
     '',
-    d.documentary[d.documentary.length - 1] ?? '',
+    d.ending?.finalLine ?? d.documentary[d.documentary.length - 1] ?? '',
     '',
     '— built in Vibe & Volumes',
   ].join('\n');

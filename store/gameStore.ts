@@ -1,6 +1,14 @@
 import { create } from 'zustand';
 import type { GameEvent, EventHistoryEntry, EventCategory } from '../types/events';
+import type { EndingId } from '../types/life';
 import { saveData, loadData, logEvent } from '../database/gameRepository';
+
+/** A career that has ended and is waiting on the end screen. */
+export interface PendingEnding {
+  id: EndingId;
+  week: number;
+  age: number;
+}
 
 /** Sentinel eventId for notes the week transition writes (phase 3, world). */
 export const SIM_EVENT_ID = 'phase3-sim';
@@ -25,6 +33,8 @@ interface GameStoreState {
   historyLog: EventHistoryEntry[]; // full readable history (last 100)
   pendingEventIndex: number;       // which active event the player is deciding on
   lastWeekSummary: EventHistoryEntry[];
+  /** Set when the career has ended; the end screen takes over. */
+  ending: PendingEnding | null;
 }
 
 interface GameStoreActions {
@@ -44,6 +54,7 @@ interface GameStoreActions {
    * system, for filtering history later.
    */
   addStoryLine: (text: string, category: EventCategory, source: string) => void;
+  setEnding: (ending: PendingEnding | null) => void;
   saveGameState: () => void;
   loadGameState: () => void;
   reset: () => void;
@@ -61,6 +72,7 @@ const DEFAULT_STATE: GameStoreState = {
   historyLog: [],
   pendingEventIndex: 0,
   lastWeekSummary: [],
+  ending: null,
 };
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -163,6 +175,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
   },
 
+  setEnding(ending) {
+    set({ ending });
+  },
+
   saveGameState() {
     const s = get();
     saveData('game', {
@@ -178,6 +194,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       activeEvents: s.activeEvents,
       pendingEventIndex: s.pendingEventIndex,
       lastWeekSummary: s.lastWeekSummary,
+      ending: s.ending,
     });
   },
 
@@ -195,6 +212,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         activeEvents,
         pendingEventIndex: Math.min(saved.pendingEventIndex ?? 0, activeEvents.length),
         lastWeekSummary: saved.lastWeekSummary ?? [],
+        ending: saved.ending ?? null,
       });
     }
   },

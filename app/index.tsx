@@ -34,6 +34,7 @@ import { COLORS } from '../constants/theme';
 export default function Index() {
   const [ready, setReady] = useState(false);
   const player = usePlayerStore((s) => s.player);
+  const ended = useGameStore((s) => s.ending !== null);
 
   useEffect(() => {
     usePlayerStore.getState().loadPlayer();
@@ -88,7 +89,7 @@ export default function Index() {
     );
   }
 
-  return <Redirect href={player ? '/(game)' : '/onboarding'} />;
+  return <Redirect href={!player ? '/onboarding' : ended ? '/ending' : '/(game)'} />;
 }
 
 const styles = StyleSheet.create({

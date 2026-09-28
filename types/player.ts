@@ -51,6 +51,8 @@ export interface Player {
    * (systems/life/age.ts), never stored, so it can't drift out of sync.
    */
   startAge: number;
+  /** 1 for a first career, 2 for a child continuing it, and so on. */
+  generation?: number;
 }
 
 export interface CreatePlayerData {

@@ -1,4 +1,4 @@
-import type { EventConsequence } from './events';
+import type { EventConsequence, MentalAxis } from './events';
 import type { PlayerStats } from './player';
 import type { StoryBeat } from './social';
 import type { CareerStageId } from '../constants/careerStages';
@@ -89,4 +89,38 @@ export interface LifeActivity {
   /** Minimum weeks between two uses. */
   cooldownWeeks?: number;
   outcomes: ActivityOutcome[];
+}
+
+// ─── Endings ──────────────────────────────────────────────────────────────
+
+export type EndingId =
+  | 'retirement'
+  | 'burnout'
+  | 'cancelled'
+  | 'died-of-age'
+  | 'died-of-health'
+  | 'died-reckless';
+
+/** What must be true for an ending to be possible this week. */
+export interface EndingCheck {
+  minAge?: number;
+  /** No ending in the first weeks of a career. */
+  minWeek?: number;
+  statLte?: { stat: keyof PlayerStats; value: number }[];
+  mentalGte?: { axis: MentalAxis; value: number }[];
+  tags?: string[];
+}
+
+export interface EndingDef {
+  id: EndingId;
+  /** Ribbon subtitle: "Burned Out", "Died of Old Age". */
+  label: string;
+  kind: 'retired' | 'quit' | 'died';
+  check: EndingCheck;
+  /** Weekly chance once the check passes. Age risk adds to it. */
+  chance: number;
+  /** Extra chance per year past `ageRisk.from` (deaths from age). */
+  ageRisk?: { from: number; perYear: number };
+  /** The last line in the Deck. `{artist}` and `{age}` are filled. */
+  finalLine: string;
 }

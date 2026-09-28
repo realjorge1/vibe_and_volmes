@@ -104,7 +104,7 @@ export function computeLegacy(): LegacyScore {
   };
 }
 
-const IDENTITY_TITLES: Record<IdentityLabel, string> = {
+export const IDENTITY_TITLES: Record<IdentityLabel, string> = {
   'authentic-legend': 'The Authentic Legend',
   'industry-puppet': 'The Industry Puppet',
   'chaotic-genius': 'The Chaotic Genius',

@@ -21,8 +21,10 @@ import { usePlayerStore } from '../store/playerStore';
 import { useGameStore } from '../store/gameStore';
 import { useMetaStore } from '../store/metaStore';
 import { STARTING_PERKS } from '../data/meta/perks';
-import { BLOODLINES } from '../data/meta/bloodlines';
+import { BLOODLINES, getBloodline } from '../data/meta/bloodlines';
 import { applyPendingInheritance } from '../systems/meta/applyInheritance';
+import { applyHeir } from '../systems/meta/applyHeir';
+import { formatMoney } from '../utils/formatters';
 import { initializeFirstWeek } from '../systems/weekEngine';
 import { COLORS, RADIUS, SPACING } from '../constants/theme';
 import { Text } from '../components/ui/Typography';
@@ -33,13 +35,28 @@ export default function Onboarding() {
   const router = useRouter();
   const [step, setStep] = useState(0);
 
-  const [realName, setRealName] = useState('');
+  // Continuing as the last artist's child: the family name, city, genre
+  // leaning and age come pre-filled (all but the age can still be changed).
+  const [heir] = useState(() => useMetaStore.getState().pendingHeir);
+
+  const [realName, setRealName] = useState(heir ? `${heir.childName} ${heir.surname}` : '');
   const [artistName, setArtistName] = useState('');
-  const [gender, setGender] = useState<Gender | null>(null);
-  const [genre, setGenre] = useState<MusicGenre | null>(null);
-  const [city, setCity] = useState<string | null>(null);
+  const [gender, setGender] = useState<Gender | null>(
+    heir && heir.gender !== 'nonbinary' ? heir.gender : null
+  );
+  const [genre, setGenre] = useState<MusicGenre | null>(heir?.genre ?? null);
+  const [city, setCity] = useState<string | null>(heir?.city ?? null);
   const [archetype, setArchetype] = useState<PlayerArchetype | null>(null);
-  const [startAge, setStartAge] = useState<number | null>(null);
+  const [startAge, setStartAge] = useState<number | null>(heir?.startAge ?? null);
+  const ageOptions = heir
+    ? [
+        {
+          age: heir.startAge,
+          label: `${heir.startAge} · ${heir.parent.artistName}'s kid`,
+          backstory: 'You grew up backstage. Now it is your name on the poster.',
+        },
+      ]
+    : STARTING_AGES;
   const [expandedRegion, setExpandedRegion] = useState<string | null>(null);
 
   const unlockedPerkIds = useMetaStore((s) => s.unlockedPerkIds);
@@ -52,7 +69,7 @@ export default function Onboarding() {
     unlockedBloodlineIds.includes(b.id)
   );
   const hasInheritance =
-    availablePerks.length > 0 || availableBloodlines.length > 0;
+    availablePerks.length > 0 || availableBloodlines.length > 0 || heir !== null;
   const lastStep = hasInheritance ? 6 : 5;
 
   const [selectedPerks, setSelectedPerks] = useState<string[]>([]);
@@ -85,12 +102,16 @@ export default function Onboarding() {
     const game = useGameStore.getState();
     for (const tag of def?.startingTags ?? []) game.addTag(tag);
 
+    // A child run takes what the last career left (and its bloodline).
+    const inherited = heir ? useMetaStore.getState().consumeHeir() : null;
+    if (inherited) applyHeir(inherited);
+
     // Phase 5: layer the chosen cross-save inheritance on top of the
     // archetype before the first week is generated.
     if (hasInheritance) {
       const meta = useMetaStore.getState();
       meta.setPendingPerks(selectedPerks);
-      meta.setPendingBloodline(selectedBloodline);
+      if (!inherited) meta.setPendingBloodline(selectedBloodline);
       applyPendingInheritance();
     }
 
@@ -122,9 +143,13 @@ export default function Onboarding() {
       >
         {step === 0 && (
           <>
-            <Text variant="title">Introduce yourself to the world</Text>
+            <Text variant="title">
+              {heir ? `The ${heir.surname} name` : 'Introduce yourself to the world'}
+            </Text>
             <Text variant="body" muted style={styles.sub}>
-              Every legend has a real name and a stage name.
+              {heir
+                ? `Child of ${heir.parent.artistName}. Everyone already knows your last name. Pick the one they will know you by.`
+                : 'Every legend has a real name and a stage name.'}
             </Text>
             <Text variant="label" muted style={styles.fieldLabel}>
               REAL NAME
@@ -173,7 +198,7 @@ export default function Onboarding() {
               ages, and some close.
             </Text>
             <View style={styles.options}>
-              {STARTING_AGES.map((a) => (
+              {ageOptions.map((a) => (
                 <SelectRow
                   key={a.age}
                   label={a.label}
@@ -274,7 +299,29 @@ export default function Onboarding() {
               into this life, or start from nothing.
             </Text>
 
-            {availableBloodlines.length > 0 && (
+            {heir && (
+              <View style={styles.heirCard}>
+                <Text variant="label" muted>
+                  FROM {heir.parent.artistName.toUpperCase()} ·{' '}
+                  {heir.parent.identityTitle.toUpperCase()}
+                </Text>
+                <Text variant="body" style={styles.selectDesc}>
+                  {formatMoney(heir.money)} · {heir.fans.toLocaleString('en-US')} fans who
+                  followed the name
+                  {heir.rivalIds.length > 0
+                    ? ` · ${heir.rivalIds.length} rival${heir.rivalIds.length > 1 ? 's' : ''} who remember`
+                    : ''}
+                </Text>
+                {heir.bloodlineId && (
+                  <Text variant="caption" muted style={styles.selectDesc}>
+                    Bloodline: {getBloodline(heir.bloodlineId)?.label}.{' '}
+                    {getBloodline(heir.bloodlineId)?.lore}
+                  </Text>
+                )}
+              </View>
+            )}
+
+            {!heir && availableBloodlines.length > 0 && (
               <>
                 <Text variant="label" muted style={styles.fieldLabel}>
                   BLOODLINE
@@ -428,6 +475,14 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   selectRowActive: { borderColor: COLORS.primary },
+  heirCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    padding: SPACING.base,
+    borderWidth: 1,
+    borderColor: COLORS.gold,
+    marginBottom: SPACING.md,
+  },
   selectDesc: { marginTop: SPACING.xs, lineHeight: 18 },
   footer: {
     flexDirection: 'row',

@@ -15,8 +15,9 @@ import {
   buildTopMoments,
   toStoryCard,
   shareStoryCard,
-  retireCareer,
 } from '../systems/legacy';
+import { ageAtWeek } from '../systems/life/age';
+import { saveProgress } from '../systems/persistence';
 import { getCultureBias } from '../systems/culture/cultureEngine';
 import { getSyncAdapter } from '../systems/sync';
 import type { CommunityLegend } from '../types/sync';
@@ -26,12 +27,6 @@ export default function ChronicleModal() {
   const player = usePlayerStore((s) => s.player);
 
   const [confirmRetire, setConfirmRetire] = useState(false);
-  const [retired, setRetired] = useState<{
-    artistName: string;
-    legacyGained: number;
-    lifetimeLegacy: number;
-    unlocks: number;
-  } | null>(null);
   const [hof, setHof] = useState<CommunityLegend[]>([]);
   const week = useGameStore((s) => s.week);
 
@@ -86,34 +81,6 @@ export default function ChronicleModal() {
         <Text variant="body" muted>
           No career to chronicle yet.
         </Text>
-      </Screen>
-    );
-  }
-
-  if (retired) {
-    return (
-      <Screen scroll>
-        <Text variant="title" style={styles.title}>
-          The mic goes quiet.
-        </Text>
-        <Card>
-          <Text variant="subheading">{retired.artistName} has retired.</Text>
-          <Text variant="body" muted style={styles.gap}>
-            +{retired.legacyGained} legacy minted. Lifetime legacy:{' '}
-            {retired.lifetimeLegacy.toLocaleString('en-US')}.
-          </Text>
-          {retired.unlocks > 0 && (
-            <Text variant="body" color={COLORS.accent} style={styles.gap}>
-              {retired.unlocks} new inheritance{retired.unlocks === 1 ? '' : 's'}{' '}
-              unlocked for your next artist.
-            </Text>
-          )}
-        </Card>
-        <Button
-          label="Begin a new legacy"
-          onPress={() => router.replace('/onboarding')}
-          style={styles.cta}
-        />
       </Screen>
     );
   }
@@ -303,14 +270,17 @@ export default function ChronicleModal() {
             <Button
               label="Retire"
               onPress={() => {
-                const r = retireCareer();
-                setRetired({
-                  artistName: r.dossier.artistName,
-                  legacyGained: r.legacyGained,
-                  lifetimeLegacy: r.lifetimeLegacy,
-                  unlocks:
-                    r.unlockedPerkIds.length + r.unlockedBloodlineIds.length,
+                // Retiring is an ending like any other: it goes through the
+                // end screen (ribbon, story card, continue as your child).
+                const p = usePlayerStore.getState().player;
+                if (!p) return;
+                useGameStore.getState().setEnding({
+                  id: 'retirement',
+                  week,
+                  age: ageAtWeek(p.startAge, week),
                 });
+                saveProgress();
+                router.replace('/ending');
               }}
               style={styles.flex}
             />

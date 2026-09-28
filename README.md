@@ -3,6 +3,10 @@
 A text-first music career life sim for iOS and Android. You play one artist from
 open mics to legacy: every tap of **Advance** is one in-game week, every week
 brings decisions, and everything you do lands as a line in your career story.
+Between weeks, the **Life** tab is where you live it: activities, the people in
+your life (family, partners, kids, friends), and what you own and where you
+live. You age a year every 12 weeks, and a career ends in retirement, burnout,
+cancellation or death. Then you can continue as your own child.
 The flow is BitLife's (one clock, one button, a situation on every tap); the
 depth is the game's own — a recording Studio, a label/tour/PR industry, a living
 world of NPC artists, shifting culture eras and a fake internet that reacts to

@@ -1,5 +1,9 @@
 import type { CareerDossier } from '../../types/legacy';
 import { buildDossier } from './chronicleEngine';
+import type { EndingId } from '../../types/life';
+import { getEnding } from '../../data/life/endings';
+import { fillFinalLine } from '../life/endingEngine';
+import { ageAtWeek } from '../life/age';
 import { useMetaStore } from '../../store/metaStore';
 import { clearAllData } from '../../database/gameRepository';
 import { usePlayerStore } from '../../store/playerStore';
@@ -40,9 +44,20 @@ export interface RetirementResult {
  *
  * UI should show the returned dossier, then route the player to onboarding.
  */
-export function retireCareer(): RetirementResult {
-  const week = useGameStore.getState().week;
+export function retireCareer(endingId: EndingId = 'retirement'): RetirementResult {
+  const game = useGameStore.getState();
+  const week = game.week;
   const dossier = buildDossier(week);
+  const player = usePlayerStore.getState().player;
+  const def = getEnding(endingId);
+  const age = game.ending?.age ?? (player ? ageAtWeek(player.startAge, week) : 0);
+  dossier.ending = {
+    id: def.id,
+    label: def.label,
+    kind: def.kind,
+    age,
+    finalLine: fillFinalLine(def, dossier.artistName, age),
+  };
 
   const minted = useMetaStore.getState().recordRetirement(dossier);
 

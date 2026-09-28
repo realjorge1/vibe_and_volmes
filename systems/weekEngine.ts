@@ -31,6 +31,7 @@ import { newcomerCandidates, ownedAssetViews } from './life/lifeContext';
 import { useStatusStore } from '../store/statusStore';
 import { getHome } from '../data/life/homes';
 import { ensureHome, runAssetWeek } from './life/assetTick';
+import { fillFinalLine, rollEnding } from './life/endingEngine';
 import { saveAll } from './persistence';
 
 export function buildEventContext(): EventContext {
@@ -284,6 +285,35 @@ export function runWeekTransition(
   //    progression dopamine spine. Reads resolved state, drives nothing.
   awardWeeklyXp(recentReactions, fansBefore);
 
+  // 9b. Does the career end here? The last line goes in the Deck, and the
+  //     end screen takes over from the next render.
+  checkForEnding(newWeek);
+
   // 10. Persist everything.
   saveAll();
+}
+
+/**
+ * Roll this week's endings. Kept separate from the transition so tests (and
+ * a future "hardcore" mode) can call it directly.
+ */
+export function checkForEnding(week: number, rng: () => number = Math.random): boolean {
+  const player = usePlayerStore.getState().player;
+  const game = useGameStore.getState();
+  if (!player || game.ending) return false;
+  const age = ageAtWeek(player.startAge, week);
+  const def = rollEnding(
+    {
+      week,
+      age,
+      stats: player.stats,
+      mental: useCareerStore.getState().mental,
+      tags: game.playerTags,
+    },
+    rng
+  );
+  if (!def) return false;
+  game.setEnding({ id: def.id, week, age });
+  game.addWeekSummaryNotes([fillFinalLine(def, player.artistName, age)], def.kind === 'died' ? 'drama' : 'personal');
+  return true;
 }

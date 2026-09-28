@@ -36,6 +36,8 @@ export default function RootLayout() {
           <Stack.Screen name="plan-modal" options={{ presentation: 'modal' }} />
           <Stack.Screen name="store-modal" options={{ presentation: 'modal' }} />
           <Stack.Screen name="community-modal" options={{ presentation: 'modal' }} />
+          {/* The end of a career: no swiping back into a life that is over. */}
+          <Stack.Screen name="ending" options={{ gestureEnabled: false }} />
         </Stack>
         <StatusBar style="light" />
       </SafeAreaProvider>

@@ -1,5 +1,6 @@
 import type { EraId } from './culture';
 import type { HistoryKind } from './industry';
+import type { EndingId } from './life';
 
 // ─── Chronicle / Legacy System (Phase 5 foundation) ───────────────────────
 //
@@ -75,6 +76,14 @@ export interface CareerDossier {
   /** AI/deterministic documentary narration paragraphs. */
   documentary: string[];
   retiredWeek: number | null;
+  /** How it ended, once it has. */
+  ending?: {
+    id: EndingId;
+    label: string;
+    kind: 'retired' | 'quit' | 'died';
+    age: number;
+    finalLine: string;
+  };
 }
 
 /** Compact, shareable card derived from the dossier (offline export). */

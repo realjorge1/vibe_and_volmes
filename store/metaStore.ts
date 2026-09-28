@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { MetaProfile, RetiredCareer } from '../types/meta';
+import type { HeirInheritance, MetaProfile, RetiredCareer } from '../types/meta';
 import type { CareerDossier, LegacyTier } from '../types/legacy';
 import { STARTING_PERKS } from '../data/meta/perks';
 import { BLOODLINES } from '../data/meta/bloodlines';
@@ -34,6 +34,9 @@ interface MetaActions {
     legacyGained: number;
   };
   setPendingPerks: (ids: string[]) => void;
+  setPendingHeir: (heir: HeirInheritance | null) => void;
+  /** Hand the heir to onboarding once; clears it. */
+  consumeHeir: () => HeirInheritance | null;
   setPendingBloodline: (id: string | null) => void;
   /** Consume the pending selections at onboarding; clears them. */
   consumePending: () => { perkIds: string[]; bloodlineId: string | null };
@@ -53,6 +56,8 @@ const DEFAULT: MetaProfile = {
   pendingBloodlineId: null,
   bestTier: 'forgotten',
   totalCareers: 0,
+  identitiesEarned: {},
+  pendingHeir: null,
 };
 
 export const useMetaStore = create<MetaStore>((set, get) => ({
@@ -72,6 +77,7 @@ export const useMetaStore = create<MetaStore>((set, get) => ({
       weeksActive: dossier.weeksActive,
       peakFans: dossier.peakFans,
       retiredAtRealTime: Date.now(),
+      ending: dossier.ending?.id,
     };
 
     // Perks unlock purely on accumulated lifetime legacy.
@@ -101,6 +107,10 @@ export const useMetaStore = create<MetaStore>((set, get) => ({
       unlockedBloodlineIds: [...s.unlockedBloodlineIds, ...newBloodlines],
       bestTier,
       totalCareers: s.totalCareers + 1,
+      identitiesEarned: {
+        ...s.identitiesEarned,
+        [dossier.identity.label]: (s.identitiesEarned[dossier.identity.label] ?? 0) + 1,
+      },
     });
     get().save();
     return {
@@ -113,6 +123,20 @@ export const useMetaStore = create<MetaStore>((set, get) => ({
   setPendingPerks(ids) {
     set({ pendingPerkIds: ids });
     get().save();
+  },
+
+  setPendingHeir(heir) {
+    set({ pendingHeir: heir });
+    get().save();
+  },
+
+  consumeHeir() {
+    const heir = get().pendingHeir;
+    if (heir) {
+      set({ pendingHeir: null });
+      get().save();
+    }
+    return heir;
   },
 
   setPendingBloodline(id) {
@@ -146,6 +170,8 @@ export const useMetaStore = create<MetaStore>((set, get) => ({
       pendingBloodlineId,
       bestTier,
       totalCareers,
+      identitiesEarned,
+      pendingHeir,
     } = get();
     saveMeta({
       lifetimeLegacy,
@@ -156,6 +182,8 @@ export const useMetaStore = create<MetaStore>((set, get) => ({
       pendingBloodlineId,
       bestTier,
       totalCareers,
+      identitiesEarned,
+      pendingHeir,
     });
   },
 }));

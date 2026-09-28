@@ -1,5 +1,6 @@
 import { View, StyleSheet } from 'react-native';
-import { Tabs } from 'expo-router';
+import { Redirect, Tabs } from 'expo-router';
+import { useGameStore } from '../../store/gameStore';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, FONTS, SPACING } from '../../constants/theme';
 import { useLiveResume } from '../../hooks/useLiveResume';
@@ -9,6 +10,9 @@ import { AwayReportModal } from '../../components/live/AwayReportModal';
 export default function GameLayout() {
   // Living-world heartbeat: energy regen + "while you were away" on focus.
   useLiveResume();
+  // A career that has ended belongs to the end screen, not the tabs.
+  const ended = useGameStore((s) => s.ending !== null);
+  if (ended) return <Redirect href="/ending" />;
 
   return (
     <View style={styles.root}>

@@ -8,6 +8,7 @@ import { CULTURE_EVENTS } from './cultureEvents';
 import { LIFE_EVENTS } from './lifeEvents';
 import { PEOPLE_EVENTS } from './peopleEvents';
 import { ASSET_EVENTS } from './assetEvents';
+import { HEIR_EVENTS } from './heirEvents';
 import type { GameEvent } from '../../types/events';
 
 export const ALL_EVENTS: GameEvent[] = [
@@ -21,6 +22,7 @@ export const ALL_EVENTS: GameEvent[] = [
   ...LIFE_EVENTS,
   ...PEOPLE_EVENTS,
   ...ASSET_EVENTS,
+  ...HEIR_EVENTS,
 ];
 
 export {
@@ -34,6 +36,7 @@ export {
   LIFE_EVENTS,
   PEOPLE_EVENTS,
   ASSET_EVENTS,
+  HEIR_EVENTS,
 };
 
 export function getEventById(id: string): GameEvent | undefined {
