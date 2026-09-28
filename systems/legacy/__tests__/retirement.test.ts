@@ -15,6 +15,7 @@ const ARTIST: CreatePlayerData = {
   genre: 'pop',
   city: 'atlanta',
   archetype: 'indie-dreamer',
+  startAge: 18,
 };
 
 function startCareer(createdAt: number): void {

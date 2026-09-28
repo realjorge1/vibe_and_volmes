@@ -4,6 +4,7 @@ import { getArchetype, buildStartingStats } from '../data/archetypes';
 import { applyStatDelta } from '../utils/statHelpers';
 import { clamp } from '../utils/random';
 import { saveData, loadData } from '../database/gameRepository';
+import { DEFAULT_START_AGE, MIN_START_AGE } from '../constants/gameConfig';
 
 interface PlayerStore {
   player: Player | null;
@@ -36,6 +37,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
       money: archetype.startingMoney,
       week: 1,
       createdAt: Date.now(),
+      startAge: Math.max(MIN_START_AGE, Math.round(data.startAge)),
     };
     set({ player });
     saveData('player', player);
@@ -43,7 +45,11 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
 
   loadPlayer() {
     const saved = loadData<Player>('player');
-    if (saved) set({ player: saved });
+    if (!saved) return;
+    // Saves from before age existed get a default start age.
+    const startAge =
+      typeof saved.startAge === 'number' ? saved.startAge : DEFAULT_START_AGE;
+    set({ player: { ...saved, startAge } });
   },
 
   updateStats(changes) {

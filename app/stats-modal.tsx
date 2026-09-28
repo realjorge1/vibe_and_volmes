@@ -1,6 +1,8 @@
 import { View, StyleSheet, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
 import { usePlayerStore } from '../store/playerStore';
+import { useGameStore } from '../store/gameStore';
+import { ageAtWeek, lifeStageForAge } from '../systems/life/age';
 import { useSettingsStore } from '../store/settingsStore';
 import { BACKEND_URL } from '../constants/aiConfig';
 import { Screen } from '../components/ui/Screen';
@@ -29,9 +31,11 @@ const SHOWN: (keyof typeof STAT_LABELS)[] = [
 export default function StatsModal() {
   const router = useRouter();
   const player = usePlayerStore((s) => s.player);
+  const week = useGameStore((s) => s.week);
   const aiCloudEnabled = useSettingsStore((s) => s.aiCloudEnabled);
   const setAiCloudEnabled = useSettingsStore((s) => s.setAiCloudEnabled);
   if (!player) return null;
+  const age = ageAtWeek(player.startAge, week);
 
   return (
     <Screen scroll>
@@ -39,8 +43,9 @@ export default function StatsModal() {
         {player.artistName}
       </Text>
       <Text variant="caption" muted style={styles.meta}>
-        {player.realName} · {genreLabel(player.genre)} ·{' '}
-        {archetypeLabel(player.archetype)}
+        {player.realName} · {age} · {lifeStageForAge(age).label}
+        {'\n'}
+        {genreLabel(player.genre)} · {archetypeLabel(player.archetype)}
       </Text>
 
       <View style={styles.stats}>

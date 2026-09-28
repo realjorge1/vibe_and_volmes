@@ -30,6 +30,7 @@ import { enhanceCurrentFeedAsync } from '../ai/pipelines/socialEnhancer';
 import { pruneCache } from '../ai/cache/genCache';
 import { useSettingsStore } from '../store/settingsStore';
 import { weeklyStatDecay } from '../utils/statHelpers';
+import { ageAtWeek, birthdayBeat, birthdayLines, lifeStageForAge } from './life/age';
 
 function buildEventContext(): EventContext {
   const player = usePlayerStore.getState().player!;
@@ -37,7 +38,10 @@ function buildEventContext(): EventContext {
   const music = useMusicStore.getState();
   const career = useCareerStore.getState();
   const culture = getCultureBias();
+  const age = ageAtWeek(player.startAge, game.week);
   return {
+    age,
+    lifeStage: lifeStageForAge(age).id,
     stats: player.stats,
     week: game.week,
     tags: game.playerTags,
@@ -241,6 +245,13 @@ export function runWeekTransition(
   // 4. Advance the clock.
   game.advanceWeek();
   const newWeek = useGameStore.getState().week;
+
+  // 4b. Birthdays lead the new week in the Deck, plus the life stage the
+  //     artist just entered, if any. Age is derived from the week.
+  const birthday = birthdayBeat(current.startAge, newWeek);
+  if (birthday) {
+    useGameStore.getState().addWeekSummaryNotes(birthdayLines(birthday), 'personal');
+  }
 
   // 5. Phase 3 ecosystem tick: labels, tours, rivalries, PR, career arc,
   //    mental health, dynamic history — all resolved through the shared

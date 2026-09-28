@@ -46,6 +46,11 @@ export interface Player {
   money: number;
   week: number;
   createdAt: number;
+  /**
+   * Age at week 1. The current age is always derived from the game week
+   * (systems/life/age.ts), never stored, so it can't drift out of sync.
+   */
+  startAge: number;
 }
 
 export interface CreatePlayerData {
@@ -55,4 +60,5 @@ export interface CreatePlayerData {
   genre: MusicGenre;
   city: string;
   archetype: PlayerArchetype;
+  startAge: number;
 }

@@ -71,6 +71,17 @@ export const BASE_STATS = {
 export const MAX_STAT = 100;
 export const MIN_STAT = 0;
 
+// ─── Age ──────────────────────────────────────────────────────────────────
+// One tap of Advance is one week; the artist ages a year every
+// WEEKS_PER_YEAR taps. 12 keeps a 20-year career near 240 taps (at a true 52
+// it would be ~1,040). Tune after playtesting — age is derived from the week,
+// so changing this re-times every save without a migration.
+export const WEEKS_PER_YEAR = 12;
+/** Youngest selectable start. Teen years are onboarding backstory only. */
+export const MIN_START_AGE = 18;
+/** Start age given to saves that predate age. */
+export const DEFAULT_START_AGE = 21;
+
 // Track quality floor/ceiling multipliers
 export const TRACK_QUALITY_WEIGHTS = {
   talent: 0.30,

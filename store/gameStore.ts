@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { GameEvent, EventHistoryEntry, ActiveEvent } from '../types/events';
+import type { GameEvent, EventHistoryEntry, EventCategory } from '../types/events';
 import { saveData, loadData, logEvent } from '../database/gameRepository';
 
 interface GameStoreState {
@@ -24,7 +24,7 @@ interface GameStoreActions {
   setActiveEvents: (events: GameEvent[]) => void;
   resolveCurrentEvent: (choiceId: string, entry: EventHistoryEntry) => void;
   nextPendingEvent: () => GameEvent | null;
-  addWeekSummaryNotes: (notes: string[]) => void;
+  addWeekSummaryNotes: (notes: string[], category?: EventCategory) => void;
   saveGameState: () => void;
   loadGameState: () => void;
   reset: () => void;
@@ -113,7 +113,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     return activeEvents[pendingEventIndex] ?? null;
   },
 
-  addWeekSummaryNotes(notes) {
+  addWeekSummaryNotes(notes, category = 'career') {
     if (notes.length === 0) return;
     const { week, lastWeekSummary, historyLog } = get();
     const entries: EventHistoryEntry[] = notes.map((text) => ({
@@ -121,7 +121,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       choiceId: 'sim',
       week,
       flavorText: text,
-      category: 'career',
+      category,
     }));
     set({
       lastWeekSummary: [...lastWeekSummary, ...entries],

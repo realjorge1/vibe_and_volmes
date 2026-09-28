@@ -1,4 +1,5 @@
 import type { PlayerStats } from './player';
+import type { LifeStageId } from './life';
 
 export type EventCategory =
   | 'career'
@@ -32,7 +33,11 @@ export type TriggerType =
   // ─── Phase 5 culture triggers ───
   | 'era_is'
   | 'genre_saturated'
-  | 'genre_ascendant';
+  | 'genre_ascendant'
+  // ─── Life: age ───
+  | 'age_gte'
+  | 'age_lte'
+  | 'life_stage';
 
 export type MentalAxis =
   | 'burnout'
@@ -50,6 +55,7 @@ export interface EventTrigger {
   mentalAxis?: MentalAxis;
   phase?: string;
   era?: string; // Phase 5: era id for `era_is`
+  lifeStage?: LifeStageId; // for `life_stage`
 }
 
 export interface StatChange {

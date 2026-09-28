@@ -1,6 +1,7 @@
 import type { GameEvent, EventTrigger, EventChoice } from '../../types/events';
 import type { PlayerStats } from '../../types/player';
 import type { MentalState } from '../../types/industry';
+import type { LifeStageId } from '../../types/life';
 import { ALL_EVENTS } from '../../data/events';
 import { getFameLevelNumber } from '../../utils/statHelpers';
 import { EVENTS_PER_WEEK } from '../../constants/gameConfig';
@@ -24,6 +25,9 @@ export interface EventContext {
   eraId: string;
   genreSaturated: boolean;
   genreAscendant: boolean;
+  // ─── Life context ───
+  age: number;
+  lifeStage: LifeStageId;
 }
 
 export function checkTrigger(trigger: EventTrigger, ctx: EventContext): boolean {
@@ -80,6 +84,12 @@ export function checkTrigger(trigger: EventTrigger, ctx: EventContext): boolean 
       return ctx.genreSaturated;
     case 'genre_ascendant':
       return ctx.genreAscendant;
+    case 'age_gte':
+      return ctx.age >= (trigger.value ?? 0);
+    case 'age_lte':
+      return ctx.age <= (trigger.value ?? Number.POSITIVE_INFINITY);
+    case 'life_stage':
+      return ctx.lifeStage === trigger.lifeStage;
     default:
       return false;
   }

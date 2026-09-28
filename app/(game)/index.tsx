@@ -30,6 +30,7 @@ import { AdvanceBar } from '../../components/home/AdvanceBar';
 import { InlineEventCard } from '../../components/events/InlineEventCard';
 import { ResolvedEventCard } from '../../components/events/ResolvedEventCard';
 import { formatWeek } from '../../utils/formatters';
+import { ageAtWeek } from '../../systems/life/age';
 import { formatFanCount, formatMoney } from '../../utils/statHelpers';
 import { COLORS, SPACING, RADIUS } from '../../constants/theme';
 
@@ -193,7 +194,7 @@ export default function Deck() {
         <View style={styles.headerTop}>
           <View style={styles.flexShrink}>
             <Text variant="label" color={COLORS.primary}>
-              {formatWeek(week).toUpperCase()}
+              {`${formatWeek(week).toUpperCase()} · AGE ${ageAtWeek(player.startAge, week)}`}
             </Text>
             <Text variant="heading" numberOfLines={1} style={styles.artist}>
               {player.artistName}

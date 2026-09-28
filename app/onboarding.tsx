@@ -14,6 +14,7 @@ import type {
   PlayerArchetype,
 } from '../types/player';
 import { ARCHETYPES } from '../data/archetypes';
+import { STARTING_AGES } from '../data/life/lifeStages';
 import { GENRES } from '../data/genres';
 import { CITIES, REGION_GROUPS } from '../data/cities';
 import { usePlayerStore } from '../store/playerStore';
@@ -38,6 +39,7 @@ export default function Onboarding() {
   const [genre, setGenre] = useState<MusicGenre | null>(null);
   const [city, setCity] = useState<string | null>(null);
   const [archetype, setArchetype] = useState<PlayerArchetype | null>(null);
+  const [startAge, setStartAge] = useState<number | null>(null);
   const [expandedRegion, setExpandedRegion] = useState<string | null>(null);
 
   const unlockedPerkIds = useMetaStore((s) => s.unlockedPerkIds);
@@ -51,7 +53,7 @@ export default function Onboarding() {
   );
   const hasInheritance =
     availablePerks.length > 0 || availableBloodlines.length > 0;
-  const lastStep = hasInheritance ? 5 : 4;
+  const lastStep = hasInheritance ? 6 : 5;
 
   const [selectedPerks, setSelectedPerks] = useState<string[]>([]);
   const [selectedBloodline, setSelectedBloodline] = useState<string | null>(
@@ -61,6 +63,7 @@ export default function Onboarding() {
   const canProceed = [
     realName.trim().length > 0 && artistName.trim().length > 0,
     gender !== null,
+    startAge !== null,
     genre !== null,
     city !== null,
     archetype !== null,
@@ -68,7 +71,7 @@ export default function Onboarding() {
   ][step];
 
   const finish = () => {
-    if (!gender || !genre || !city || !archetype) return;
+    if (!gender || !genre || !city || !archetype || startAge === null) return;
     usePlayerStore.getState().createPlayer({
       artistName: artistName.trim(),
       realName: realName.trim(),
@@ -76,6 +79,7 @@ export default function Onboarding() {
       genre,
       city,
       archetype,
+      startAge,
     });
     const def = ARCHETYPES.find((a) => a.id === archetype);
     const game = useGameStore.getState();
@@ -163,6 +167,27 @@ export default function Onboarding() {
 
         {step === 2 && (
           <>
+            <Text variant="title">How old are you?</Text>
+            <Text variant="body" muted style={styles.sub}>
+              You age a year every few weeks. Some doors only open at certain
+              ages, and some close.
+            </Text>
+            <View style={styles.options}>
+              {STARTING_AGES.map((a) => (
+                <SelectRow
+                  key={a.age}
+                  label={a.label}
+                  desc={a.backstory}
+                  selected={startAge === a.age}
+                  onPress={() => setStartAge(a.age)}
+                />
+              ))}
+            </View>
+          </>
+        )}
+
+        {step === 3 && (
+          <>
             <Text variant="title">Your sound</Text>
             <View style={styles.options}>
               {GENRES.map((g) => (
@@ -178,7 +203,7 @@ export default function Onboarding() {
           </>
         )}
 
-        {step === 3 && (
+        {step === 4 && (
           <>
             <Text variant="title">Where&apos;s home?</Text>
             <View style={styles.options}>
@@ -223,7 +248,7 @@ export default function Onboarding() {
           </>
         )}
 
-        {step === 4 && (
+        {step === 5 && (
           <>
             <Text variant="title">Your origin</Text>
             <View style={styles.options}>
@@ -240,7 +265,7 @@ export default function Onboarding() {
           </>
         )}
 
-        {step === 5 && hasInheritance && (
+        {step === 6 && hasInheritance && (
           <>
             <Text variant="title">Your inheritance</Text>
             <Text variant="body" muted style={styles.sub}>

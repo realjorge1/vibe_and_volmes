@@ -31,6 +31,7 @@ function makePlayer(over: Partial<Player['stats']> = {}): Player {
     money: 0,
     week: 10,
     createdAt: 0,
+    startAge: 21,
     stats: {
       talent: 60, writing: 55, vocalSkill: 60, charisma: 65, authenticity: 55,
       creativity: 55, discipline: 50, reputation: 55, fans: 500_000,

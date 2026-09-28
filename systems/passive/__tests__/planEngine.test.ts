@@ -19,6 +19,7 @@ function fakePlayer(): Player {
     money: 0,
     week: 1,
     createdAt: Date.now(),
+    startAge: 21,
     stats: {
       talent: 50,
       writing: 50,
