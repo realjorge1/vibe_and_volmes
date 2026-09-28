@@ -27,7 +27,10 @@ import { ageAtWeek, birthdayBeat, birthdayLines, lifeStageForAge } from './life/
 import { useActivityStore } from '../store/activityStore';
 import { usePeopleStore } from '../store/peopleStore';
 import { ensureFamily, runPeopleWeek } from './life/peopleTick';
-import { newcomerCandidates } from './life/lifeContext';
+import { newcomerCandidates, ownedAssetViews } from './life/lifeContext';
+import { useStatusStore } from '../store/statusStore';
+import { getHome } from '../data/life/homes';
+import { ensureHome, runAssetWeek } from './life/assetTick';
 import { saveAll } from './persistence';
 
 export function buildEventContext(): EventContext {
@@ -42,6 +45,10 @@ export function buildEventContext(): EventContext {
     lifeStage: lifeStageForAge(age).id,
     people: usePeopleStore.getState().people,
     newcomers: newcomerCandidates(),
+    assets: ownedAssetViews(),
+    homeId: useStatusStore.getState().homeId ?? 'shared-apartment',
+    homeTitle: getHome(useStatusStore.getState().homeId ?? 'shared-apartment').title,
+    money: player.money,
     stats: player.stats,
     week: game.week,
     tags: game.playerTags,
@@ -137,8 +144,9 @@ export function initializeFirstWeek(): void {
   if (player && !useWorldStore.getState().world) {
     bootstrapWorld(player.createdAt);
   }
-  // The family exists from the first week, before its first slate.
+  // The family and a home exist from the first week, before its first slate.
   ensureFamily();
+  ensureHome(true);
 
   const ctx = buildEventContext();
   useGameStore.getState().setActiveEvents(generateWeekEvents(ctx));
@@ -254,6 +262,9 @@ export function runWeekTransition(
   // 5c. The artist's personal life: neglect, allowances, births, partners
   //     walking out, and headlines about the people they know.
   runPeopleWeek(newWeek, worldEvents);
+
+  // 5d. What the artist owns costs upkeep; where they live moves their mood.
+  runAssetWeek(newWeek);
 
   // 6. Stage next week's events (now aware of Phase 3 state).
   const ctx = buildEventContext();

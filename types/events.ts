@@ -1,6 +1,7 @@
 import type { PlayerStats } from './player';
 import type { LifeStageId } from './life';
 import type { PartnerBond, PersonRole } from './people';
+import type { HomeId, LuxuryCategory } from './status';
 
 export type EventCategory =
   | 'career'
@@ -45,7 +46,12 @@ export type TriggerType =
   | 'has_person'
   | 'lacks_person'
   | 'person_affinity_lte'
-  | 'person_affinity_gte';
+  | 'person_affinity_gte'
+  // ─── Life: assets ───
+  | 'owns_asset'
+  | 'lacks_asset'
+  | 'home_is'
+  | 'money_lte';
 
 export type MentalAxis =
   | 'burnout'
@@ -66,6 +72,9 @@ export interface EventTrigger {
   lifeStage?: LifeStageId; // for `life_stage`
   role?: PersonRole; // for the person triggers
   bond?: PartnerBond; // `has_partner`: only partners at this stage
+  asset?: string; // `owns_asset` / `lacks_asset`: a luxury item id
+  assetCategory?: LuxuryCategory; // `owns_asset`: anything in this category
+  home?: HomeId; // `home_is`
 }
 
 export interface StatChange {
@@ -121,6 +130,11 @@ export interface EventConsequence {
   personChanges?: PersonChange[];
   /** Someone new enters the artist's life. `{new}` in the text is their name. */
   addPerson?: NewPerson;
+  /**
+   * The asset the event named as `{asset}` is lost (stolen, repossessed) or
+   * sold for half what it cost. `itemId` is filled in when slated.
+   */
+  asset?: { action: 'lose' | 'sell'; itemId?: string };
   flavorText: string;
 }
 

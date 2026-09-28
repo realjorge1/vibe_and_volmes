@@ -5,7 +5,6 @@ import { usePlayerStore } from '../../store/playerStore';
 import { useStatusStore } from '../../store/statusStore';
 import { useProgressionStore } from '../../store/progressionStore';
 import { LUXURY_CATALOG, statusTier } from '../../data/luxury/catalog';
-import { ACHIEVEMENTS } from '../../data/progression/achievements';
 import { purchaseLuxury } from '../../systems/status/statusEngine';
 import { Card } from '../ui/Card';
 import { Text } from '../ui/Typography';
@@ -22,21 +21,15 @@ const CATEGORY_LABEL: Record<LuxuryCategory, string> = {
   cosmetic: 'Image', security: 'Security', art: 'Art',
 };
 
-// Badge tiers → desaturated tokens (was loud bronze/silver/gold/red).
-const TIER_COLOR = {
-  bronze: COLORS.textMuted,
-  silver: COLORS.textSecondary,
-  gold: COLORS.gold,
-  legendary: COLORS.primary,
-} as const;
-
-/** Empire · Lifestyle — status score, wallet, badges, the flex catalog. */
+/**
+ * Life · Assets · Lifestyle — status score, wallet, and the flex catalog.
+ * Everything here costs weekly upkeep once owned (systems/life/assetTick.ts).
+ */
 export function LifestyleSection() {
   const money = usePlayerStore((s) => s.player?.money ?? 0);
   const owned = useStatusStore((s) => s.owned);
   const totalSpent = useStatusStore((s) => s.totalSpent);
   const level = useProgressionStore((s) => s.level);
-  const unlocked = useProgressionStore((s) => s.unlockedAchievements);
   const [flash, setFlash] = useState<string | null>(null);
 
   const score = useMemo(
@@ -81,37 +74,6 @@ export function LifestyleSection() {
         </Pressable>
       )}
 
-      {/* ── Badges ────────────────────────────────────────────── */}
-      <Text variant="heading" style={styles.section}>
-        Badges · {unlocked.length}/{ACHIEVEMENTS.length}
-      </Text>
-      <View style={styles.badgeWrap}>
-        {ACHIEVEMENTS.map((a) => {
-          const got = unlocked.includes(a.id);
-          const hidden = a.secret && !got;
-          return (
-            <View
-              key={a.id}
-              style={[
-                styles.badge,
-                { borderColor: got ? TIER_COLOR[a.tier] : COLORS.border },
-              ]}
-            >
-              <Text
-                variant="caption"
-                weight="semibold"
-                color={got ? TIER_COLOR[a.tier] : COLORS.textMuted}
-              >
-                {hidden ? '??? Secret' : a.name}
-              </Text>
-              <Text variant="label" muted numberOfLines={2}>
-                {hidden ? 'Keep playing to reveal.' : a.description}
-              </Text>
-            </View>
-          );
-        })}
-      </View>
-
       {/* ── Catalog ───────────────────────────────────────────── */}
       {CATEGORY_ORDER.map((cat) => {
         const items = LUXURY_CATALOG.filter((i) => i.category === cat);
@@ -140,6 +102,7 @@ export function LifestyleSection() {
                       </Text>
                       <Text variant="label" muted style={styles.meta}>
                         +{item.statusValue} STATUS · {item.tone.toUpperCase()}
+                        {item.upkeep > 0 ? ` · ${formatMoney(item.upkeep)}/WK UPKEEP` : ''}
                         {locked ? ` · LV ${item.levelReq}` : ''}
                       </Text>
                     </View>
@@ -208,15 +171,6 @@ const styles = StyleSheet.create({
   },
   dismiss: { marginTop: SPACING.xs },
   section: { marginTop: SPACING.lg, marginBottom: SPACING.sm },
-  badgeWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm },
-  badge: {
-    width: '47%',
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    padding: SPACING.md,
-    gap: 2,
-  },
   itemRow: { flexDirection: 'row', gap: SPACING.base },
   flex: { flex: 1 },
   meta: { marginTop: SPACING.xs },

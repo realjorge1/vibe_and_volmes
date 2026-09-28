@@ -12,6 +12,8 @@ import { useLabelStore } from '../../store/labelStore';
 import { uid } from '../../utils/id';
 import { usePeopleStore } from '../../store/peopleStore';
 import { activePeople, newPersonId } from '../life/peopleEngine';
+import { useStatusStore } from '../../store/statusStore';
+import { settleHome } from '../life/assetTick';
 
 export interface ConsequenceResult {
   socialReaction: SocialReactionType;
@@ -137,6 +139,17 @@ export function applyConsequence(
         ...(np.role === 'partner' ? { bond: 'dating' as const } : {}),
       });
     }
+  }
+
+  // ─── Life: assets ───
+
+  if (consequence.asset?.itemId) {
+    const lost = useStatusStore.getState().removeOwned(consequence.asset.itemId);
+    if (lost && consequence.asset.action === 'sell') {
+      player.addMoney(Math.round(lost.boughtAtCost / 2));
+    }
+    // Losing the deed means losing the home that came with it.
+    settleHome();
   }
 
   return {

@@ -8,21 +8,20 @@ import {
 } from '../../components/ui/SegmentedControl';
 import { OverviewSection } from '../../components/empire/OverviewSection';
 import { BusinessSection } from '../../components/empire/BusinessSection';
-import { LifestyleSection } from '../../components/empire/LifestyleSection';
+import { BadgesSection } from '../../components/empire/BadgesSection';
 import { SPACING } from '../../constants/theme';
 
-type Tab = 'overview' | 'business' | 'lifestyle';
+type Tab = 'overview' | 'business';
 
 const SEGMENTS: readonly Segment<Tab>[] = [
   { key: 'overview', label: 'Overview' },
   { key: 'business', label: 'Business' },
-  { key: 'lifestyle', label: 'Lifestyle' },
 ];
 
 /**
- * Empire — the merged Career + Industry + Status hub. One header, a segmented
- * control, and a single focused section at a time so the dense business data
- * never becomes an overwhelming mega-scroll.
+ * Empire — the business side of the career: stage, level, badges, labels,
+ * tours and PR. One header, a segmented control, and a single focused
+ * section at a time. What the artist owns and where they live is in Life.
  */
 export default function Empire() {
   const [tab, setTab] = useState<Tab>('overview');
@@ -38,9 +37,13 @@ export default function Empire() {
         onChange={setTab}
         style={styles.segment}
       />
-      {tab === 'overview' && <OverviewSection />}
+      {tab === 'overview' && (
+        <>
+          <OverviewSection />
+          <BadgesSection />
+        </>
+      )}
       {tab === 'business' && <BusinessSection />}
-      {tab === 'lifestyle' && <LifestyleSection />}
     </Screen>
   );
 }

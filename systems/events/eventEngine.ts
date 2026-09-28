@@ -4,7 +4,13 @@ import type { MentalState } from '../../types/industry';
 import type { LifeStageId } from '../../types/life';
 import type { Person } from '../../types/people';
 import { activePeople, partnerOf } from '../life/peopleEngine';
-import { hasRoles, personalizeEvent, type NewcomerCandidate } from './personalize';
+import {
+  canCast,
+  personalizeEvent,
+  type AssetView,
+  type NewcomerCandidate,
+} from './personalize';
+import type { HomeId } from '../../types/status';
 import { ALL_EVENTS } from '../../data/events';
 import { getFameLevelNumber } from '../../utils/statHelpers';
 import { EVENTS_PER_WEEK } from '../../constants/gameConfig';
@@ -35,6 +41,12 @@ export interface EventContext {
   people: Person[];
   /** Strangers an event can introduce as `{new}` (unlinked world NPCs). */
   newcomers: NewcomerCandidate[];
+  // ─── Assets context ───
+  assets: AssetView[];
+  homeId: HomeId;
+  /** Lowercase, e.g. "your penthouse". */
+  homeTitle: string;
+  money: number;
 }
 
 export function checkTrigger(trigger: EventTrigger, ctx: EventContext): boolean {
@@ -115,6 +127,18 @@ export function checkTrigger(trigger: EventTrigger, ctx: EventContext): boolean 
       return activePeople(ctx.people).some(
         (p) => p.role === trigger.role && p.affinity >= (trigger.value ?? 0)
       );
+    case 'owns_asset':
+      return ctx.assets.some(
+        (a) =>
+          (!trigger.asset || a.itemId === trigger.asset) &&
+          (!trigger.assetCategory || a.category === trigger.assetCategory)
+      );
+    case 'lacks_asset':
+      return !ctx.assets.some((a) => a.itemId === trigger.asset);
+    case 'home_is':
+      return ctx.homeId === trigger.home;
+    case 'money_lte':
+      return ctx.money <= (trigger.value ?? 0);
     default:
       return false;
   }
@@ -130,8 +154,8 @@ function passesCooldown(event: GameEvent, ctx: EventContext): boolean {
 export function isEventEligible(event: GameEvent, ctx: EventContext): boolean {
   if (event.unique && ctx.eventHistory.includes(event.id)) return false;
   if (!passesCooldown(event, ctx)) return false;
-  // Text that names a role needs someone in that role to name.
-  if (!hasRoles(event, ctx.people)) return false;
+  // Text that names a person or a thing needs one to name.
+  if (!canCast(event, ctx)) return false;
   return event.triggers.every((t) => checkTrigger(t, ctx));
 }
 
@@ -176,5 +200,5 @@ export function generateWeekEvents(ctx: EventContext): GameEvent[] {
   }
 
   // Fill in the people each event talks about, once, as it is slated.
-  return selected.map((e) => personalizeEvent(e, ctx.people, ctx.newcomers));
+  return selected.map((e) => personalizeEvent(e, ctx));
 }

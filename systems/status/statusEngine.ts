@@ -11,6 +11,7 @@ import { XP_REWARDS } from '../../constants/progression';
 import { awardXp, checkAchievements } from '../progression/xpEngine';
 import { pushNotification } from '../live/notify';
 import { pick, pickN, clamp } from '../../utils/random';
+import { saveProgress } from '../persistence';
 
 type Verdict = NonNullable<PurchaseResult['verdict']>;
 
@@ -138,6 +139,13 @@ export function purchaseLuxury(itemId: string): PurchaseResult {
   const verdict = decideVerdict(item.tone, player.stats.authenticity, player.stats.reputation);
   usePlayerStore.getState().updateStats(statDeltas(verdict, item.statusValue));
 
+  // 2b. It is part of the story.
+  useGameStore.getState().addStoryLine(
+    `You bought the ${item.name}. ${VERDICT_COPY[verdict].toast}`,
+    'opportunity',
+    `luxury:${item.id}`
+  );
+
   // 3. The feed reacts now.
   const posts = reactionPosts(verdict, player.artistName, week);
   const social = useSocialStore.getState();
@@ -163,10 +171,7 @@ export function purchaseLuxury(itemId: string): PurchaseResult {
   checkAchievements();
 
   // 5. Persist.
-  usePlayerStore.getState().save();
-  useStatusStore.getState().save();
-  useSocialStore.getState().save();
-  useProgressionStore.getState().save();
+  saveProgress();
 
   return {
     ok: true,

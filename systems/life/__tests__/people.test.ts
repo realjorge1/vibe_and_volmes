@@ -12,7 +12,7 @@ import {
 } from '../peopleEngine';
 import {
   bindPeople,
-  hasRoles,
+  canCast,
   personalizeEvent,
   rolesInEvent,
 } from '../../events/personalize';
@@ -202,10 +202,10 @@ test('people events only name roles that exist, and every one names someone', ()
     assert.ok(roles.size > 0 || introduces, `${e.id} names nobody`);
   }
   const rent = byId('people-sibling-rent');
-  assert.equal(hasRoles(rent, [person({ role: 'parent' })]), false);
-  assert.equal(hasRoles(rent, [person({ role: 'sibling' })]), true);
+  assert.equal(canCast(rent, { people: [person({ role: 'parent' })] }), false);
+  assert.equal(canCast(rent, { people: [person({ role: 'sibling' })] }), true);
   assert.equal(
-    hasRoles(rent, [person({ role: 'sibling', traits: ['estranged'] })]),
+    canCast(rent, { people: [person({ role: 'sibling', traits: ['estranged'] })] }),
     false,
     'the estranged are out of the story'
   );
@@ -218,7 +218,7 @@ test('slating an event fills in real names and targets the named person', () => 
 
   // The trigger is about a cold parent, so the cold parent is the one named.
   assert.equal(bindPeople(show, [dad, mom]).parent?.id, mom.id);
-  const filled = personalizeEvent(show, [dad, mom]);
+  const filled = personalizeEvent(show, { people: [dad, mom] });
   assert.equal(filled.title, 'Denise Is Coming to Your Show');
   assert.match(filled.description, /^Your mom has never been/);
   assert.ok(filled.choices[0].text.includes('Denise'));
@@ -229,7 +229,7 @@ test('slating an event fills in real names and targets the named person', () => 
 
 test('{new} names the newcomer everywhere, and the same person joins', () => {
   const offer = byId('people-manager-offer');
-  const filled = personalizeEvent(offer, [], [{ name: 'Rook Vance', npcId: 'npc-9' }], () => 0);
+  const filled = personalizeEvent(offer, { people: [], newcomers: [{ name: 'Rook Vance', npcId: 'npc-9' }] }, () => 0);
   // A manager is not someone from the artist world: a generated name.
   const add = filled.choices[0].consequences.addPerson!;
   assert.equal(add.role, 'manager');
@@ -247,7 +247,7 @@ test('{new} names the newcomer everywhere, and the same person joins', () => {
         : c.consequences,
     })),
   };
-  const fromWorld = personalizeEvent(industry, [], [{ name: 'Rook Vance', npcId: 'npc-9' }]);
+  const fromWorld = personalizeEvent(industry, { people: [], newcomers: [{ name: 'Rook Vance', npcId: 'npc-9' }] });
   assert.match(fromWorld.description, /^Rook Vance has managed/);
   assert.equal(fromWorld.choices[0].consequences.addPerson!.npcId, 'npc-9');
 });

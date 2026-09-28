@@ -32,6 +32,11 @@ import {
 } from '../life/peopleEngine';
 import { meetPerson } from '../life/peopleTick';
 import type { Person } from '../../types/people';
+import type { HomeId } from '../../types/status';
+import { useStatusStore } from '../../store/statusStore';
+import { getHome } from '../../data/life/homes';
+import { homeAvailability } from '../life/assetEngine';
+import { moveHome } from '../life/assetTick';
 import { pick } from '../../utils/random';
 
 /**
@@ -267,4 +272,24 @@ export function playerInteract(personId: string, interactionId: string): Interac
     person: usePeopleStore.getState().get(person.id) ?? null,
     posted,
   };
+}
+
+// ─── Life: home ────────────────────────────────────────────────────────────
+
+/** Move house. Moving up costs a deposit; the new home sets the burn. */
+export function playerMoveHome(homeId: HomeId): { ok: true } | { ok: false; reason: string } {
+  const player = usePlayerStore.getState().player;
+  const status = useStatusStore.getState();
+  if (!player || !status.homeId) return { ok: false, reason: 'Nowhere to move from' };
+  const availability = homeAvailability(
+    getHome(homeId),
+    status.homeId,
+    new Set(status.owned.map((o) => o.itemId)),
+    player.money,
+    useCareerStore.getState().economy.weeklyBurn
+  );
+  if (!availability.ok) return availability;
+  moveHome(homeId, availability.cost);
+  saveProgress();
+  return { ok: true };
 }

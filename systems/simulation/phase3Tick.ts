@@ -1,4 +1,5 @@
 import type { InfluenceBundle } from '../../types/industry';
+import { lifestyleBurn } from './lifestyle';
 import { usePlayerStore } from '../../store/playerStore';
 import { useCareerStore } from '../../store/careerStore';
 import { usePressStore } from '../../store/pressStore';
@@ -41,9 +42,8 @@ function applyEconomy(bundle: InfluenceBundle, week: number): void {
   if (!player) return;
   const eco = careerStore.economy;
 
-  // Recurring lifestyle burn scales with chosen lifestyle tier.
-  const burn = eco.weeklyBurn * (1 + eco.lifestyleTier * 0.6);
-  bundle.moneyDelta -= Math.round(burn);
+  const burn = lifestyleBurn(eco.weeklyBurn, eco.lifestyleTier);
+  bundle.moneyDelta -= burn;
 
   // Tax the net positive cash the player took in this week.
   if (bundle.moneyDelta > 0) {

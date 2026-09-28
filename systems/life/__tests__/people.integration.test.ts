@@ -160,7 +160,7 @@ test('eight different interactions work, each writing to the Deck', () => {
 test('events mention the artist\'s people by name', () => {
   const people = usePeopleStore.getState().people;
   const event = PEOPLE_EVENTS.find((e) => e.id === 'people-parent-saw-messages')!;
-  const filled = personalizeEvent(event, people);
+  const filled = personalizeEvent(event, { people });
   const named = people.find((p) => filled.title.includes(p.name));
   assert.ok(named, 'the title names a parent');
   assert.ok(filled.description.includes(named!.title), 'and says who they are to you');

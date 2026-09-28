@@ -9,7 +9,9 @@ import { stageForProgress } from '../career/careerStage';
 import { ageAtWeek } from './age';
 import type { ActivityContext } from './activityEngine';
 import type { Npc } from '../../types/world';
-import type { NewcomerCandidate } from '../events/personalize';
+import type { AssetView, NewcomerCandidate } from '../events/personalize';
+import { useStatusStore } from '../../store/statusStore';
+import { ownedItems } from './assetEngine';
 import { usePeopleStore } from '../../store/peopleStore';
 import { partnerOf } from './peopleEngine';
 import { shuffle } from '../../utils/random';
@@ -95,6 +97,16 @@ export function worldNpcs({
 /** A random active artist or producer from the living world, if one exists. */
 export function randomWorldNpc(query: WorldNpcQuery = {}): Npc | null {
   return worldNpcs(query)[0] ?? null;
+}
+
+/** What the artist owns, as events see it. */
+export function ownedAssetViews(): AssetView[] {
+  return ownedItems(useStatusStore.getState().owned).map((i) => ({
+    itemId: i.id,
+    name: i.name,
+    category: i.category,
+    cost: i.cost,
+  }));
 }
 
 /** Strangers events can introduce as `{new}`. */

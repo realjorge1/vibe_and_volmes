@@ -8,13 +8,15 @@ import {
 } from '../../components/ui/SegmentedControl';
 import { ActivitiesSection } from '../../components/life/ActivitiesSection';
 import { PeopleSection } from '../../components/life/PeopleSection';
+import { AssetsSection } from '../../components/life/AssetsSection';
 import { SPACING } from '../../constants/theme';
 
-type Tab = 'activities' | 'people';
+type Tab = 'activities' | 'people' | 'assets';
 
 const SEGMENTS: readonly Segment<Tab>[] = [
   { key: 'activities', label: 'Activities' },
   { key: 'people', label: 'People' },
+  { key: 'assets', label: 'Assets' },
 ];
 
 /**
@@ -38,6 +40,7 @@ export default function Life() {
       />
       {tab === 'activities' && <ActivitiesSection />}
       {tab === 'people' && <PeopleSection />}
+      {tab === 'assets' && <AssetsSection />}
     </Screen>
   );
 }

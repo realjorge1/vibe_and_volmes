@@ -268,7 +268,8 @@ export type ExpenseKind =
   | 'pr'
   | 'legal'
   | 'label-recoup'
-  | 'tour-cost';
+  | 'tour-cost'
+  | 'upkeep';
 
 export interface LedgerEntry {
   week: number;

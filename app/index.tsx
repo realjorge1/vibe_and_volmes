@@ -25,6 +25,7 @@ import { useWorldStore } from '../store/worldStore';
 import { useActivityStore } from '../store/activityStore';
 import { usePeopleStore } from '../store/peopleStore';
 import { ensureFamily } from '../systems/life/peopleTick';
+import { ensureHome } from '../systems/life/assetTick';
 import { refreshCommunity } from '../systems/community';
 import { bootstrapWorld } from '../systems/weekEngine';
 import { loadBudget } from '../ai/budget/ledger';
@@ -68,8 +69,11 @@ export default function Index() {
     if (existing && !useWorldStore.getState().world) {
       bootstrapWorld(existing.createdAt);
     }
-    // Careers from before People get their family now.
-    if (existing) ensureFamily();
+    // Careers from before People and homes get them now.
+    if (existing) {
+      ensureFamily();
+      ensureHome(false);
+    }
 
     setReady(true);
     // Fire-and-forget: refresh the anonymous community snapshot (offline-safe).
