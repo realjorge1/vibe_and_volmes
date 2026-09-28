@@ -1,0 +1,123 @@
+import type { RivalryActionDef } from '../../types/relationships';
+
+/**
+ * What a rival can DO to the player. The rivalry engine picks weighted by
+ * the rival's attitude/personality and the current intensity. Hostile
+ * actions escalate intensity; praise/olive-branch de-escalate.
+ */
+export const RIVALRY_ACTIONS: RivalryActionDef[] = [
+  {
+    id: 'ra-subtweet',
+    kind: 'subtweet',
+    minIntensity: 15,
+    hostile: true,
+    summary: '{rival} posted a thinly-veiled subtweet about you',
+    reputationDelta: -1,
+    fanLoyaltyDelta: 0,
+    mentalHit: 3,
+    intensityDelta: 6,
+    socialBeat: 'rival-subtweet',
+  },
+  {
+    id: 'ra-spread-rumor',
+    kind: 'spread-rumor',
+    minIntensity: 30,
+    hostile: true,
+    summary: '{rival} is quietly feeding rumors about you to blogs',
+    reputationDelta: -4,
+    fanLoyaltyDelta: -2,
+    mentalHit: 7,
+    intensityDelta: 10,
+    spawnsControversy: true,
+    socialBeat: 'rival-rumor',
+  },
+  {
+    id: 'ra-steal-producer',
+    kind: 'steal-producer',
+    minIntensity: 35,
+    hostile: true,
+    summary: '{rival} poached the producer you were about to work with',
+    reputationDelta: -2,
+    fanLoyaltyDelta: 0,
+    mentalHit: 8,
+    intensityDelta: 12,
+    socialBeat: 'rival-poach',
+  },
+  {
+    id: 'ra-sabotage-collab',
+    kind: 'sabotage-collab',
+    minIntensity: 45,
+    hostile: true,
+    summary: '{rival} pressured a collaborator into dropping you',
+    reputationDelta: -5,
+    fanLoyaltyDelta: -3,
+    mentalHit: 11,
+    intensityDelta: 14,
+    socialBeat: 'rival-sabotage',
+  },
+  {
+    id: 'ra-award-snipe',
+    kind: 'award-snipe',
+    minIntensity: 40,
+    hostile: true,
+    summary: '{rival} beat you to an award everyone expected you to win',
+    reputationDelta: -3,
+    fanLoyaltyDelta: -4,
+    mentalHit: 13,
+    intensityDelta: 11,
+    socialBeat: 'rival-award-snipe',
+  },
+  {
+    id: 'ra-trend-domination',
+    kind: 'trend-domination',
+    minIntensity: 25,
+    hostile: true,
+    summary: '{rival} dropped on your release day and buried your numbers',
+    reputationDelta: -2,
+    fanLoyaltyDelta: -3,
+    mentalHit: 9,
+    intensityDelta: 9,
+    socialBeat: 'rival-chart-block',
+  },
+  {
+    id: 'ra-diss-track',
+    kind: 'diss-track',
+    minIntensity: 55,
+    hostile: true,
+    summary: '{rival} dropped a full diss track aimed straight at you',
+    reputationDelta: -3,
+    fanLoyaltyDelta: 4, // your base rallies
+    mentalHit: 16,
+    intensityDelta: 22,
+    spawnsControversy: true,
+    socialBeat: 'rival-diss-track',
+  },
+  {
+    id: 'ra-public-praise',
+    kind: 'public-praise',
+    minIntensity: 0,
+    hostile: false,
+    summary: '{rival} publicly praised your latest work',
+    reputationDelta: 4,
+    fanLoyaltyDelta: 2,
+    mentalHit: -4,
+    intensityDelta: -14,
+    socialBeat: 'rival-praise',
+  },
+  {
+    id: 'ra-olive-branch',
+    kind: 'olive-branch',
+    minIntensity: 0,
+    hostile: false,
+    summary: '{rival} reached out about squashing the beef',
+    reputationDelta: 2,
+    fanLoyaltyDelta: 0,
+    mentalHit: -6,
+    intensityDelta: -25,
+    socialBeat: 'rival-olive-branch',
+  },
+];
+
+export function getRivalryAction(id: string): RivalryActionDef | undefined {
+  return RIVALRY_ACTIONS.find((a) => a.id === id);
+}

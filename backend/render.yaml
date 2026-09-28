@@ -1,0 +1,28 @@
+# Render blueprint for the Vibe & Volumes backend.
+# Deploy: New > Blueprint, point Render at this repo. Because the backend lives
+# in a subfolder of the monorepo, `rootDir: backend` scopes the build to it.
+# Set AI_API_KEY in the Render dashboard (it is sync:false — never committed).
+services:
+  - type: web
+    name: vibe-and-volumes-backend
+    runtime: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: ALLOWED_ORIGINS
+        value: "*"
+      - key: LLM_BASE_URL
+        value: https://api.openai.com/v1/chat/completions
+      - key: AI_MODEL
+        value: gpt-4o-mini
+      - key: MAX_OUTPUT_TOKENS
+        value: "380"
+      - key: COMMUNITY_ENABLED
+        value: "true"
+      - key: AI_API_KEY
+        sync: false

@@ -1,24 +1,44 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
-
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { getDb } from '../database/db';
+import { COLORS } from '../constants/theme';
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  useEffect(() => {
+    // Open the DB once on boot so the schema is ready before any save.
+    getDb();
+  }, []);
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: COLORS.bg },
+            animation: 'fade',
+          }}
+        >
+          <Stack.Screen name="stats-modal" options={{ presentation: 'modal' }} />
+          <Stack.Screen
+            name="interview-modal"
+            options={{ presentation: 'modal' }}
+          />
+          <Stack.Screen
+            name="chronicle-modal"
+            options={{ presentation: 'modal' }}
+          />
+          <Stack.Screen name="thread-modal" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="profile-modal" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="plan-modal" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="store-modal" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="community-modal" options={{ presentation: 'modal' }} />
+        </Stack>
+        <StatusBar style="light" />
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
