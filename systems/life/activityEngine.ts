@@ -24,6 +24,7 @@ export interface ActivityContext {
   money: number;
   tags: string[];
   hasRival: boolean;
+  hasPartner: boolean;
   /** Activities already done this week. */
   doneThisWeek: number;
   /** Gross money already earned from activities this week. */
@@ -64,6 +65,7 @@ export function activityAvailability(
   if (g.requiresTag && !ctx.tags.includes(g.requiresTag)) return locked('Not available to you');
   if (g.lacksTag && ctx.tags.includes(g.lacksTag)) return locked('Not available to you');
   if (g.requiresRival && !ctx.hasRival) return locked('Needs a rival');
+  if (g.single && ctx.hasPartner) return locked('You are seeing someone');
 
   const busy = (reason: string): Availability => ({ ok: false, locked: false, reason });
   if (ctx.doneThisWeek >= ACTIVITIES_PER_WEEK) return busy('No time left this week');

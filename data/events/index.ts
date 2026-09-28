@@ -6,6 +6,7 @@ import { RIVALRY_EVENTS } from './rivalryEvents';
 import { INDUSTRY_EVENTS } from './industryEvents';
 import { CULTURE_EVENTS } from './cultureEvents';
 import { LIFE_EVENTS } from './lifeEvents';
+import { PEOPLE_EVENTS } from './peopleEvents';
 import type { GameEvent } from '../../types/events';
 
 export const ALL_EVENTS: GameEvent[] = [
@@ -17,6 +18,7 @@ export const ALL_EVENTS: GameEvent[] = [
   ...INDUSTRY_EVENTS,
   ...CULTURE_EVENTS,
   ...LIFE_EVENTS,
+  ...PEOPLE_EVENTS,
 ];
 
 export {
@@ -28,6 +30,7 @@ export {
   INDUSTRY_EVENTS,
   CULTURE_EVENTS,
   LIFE_EVENTS,
+  PEOPLE_EVENTS,
 };
 
 export function getEventById(id: string): GameEvent | undefined {

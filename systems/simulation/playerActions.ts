@@ -13,12 +13,26 @@ import { applyBundle } from './applyBundle';
 import { useActivityStore } from '../../store/activityStore';
 import { getLifeActivity, ACTIVITY_CATEGORIES } from '../../data/life/lifeActions';
 import { activityAvailability, resolveActivity, type ActivityResult } from '../life/activityEngine';
-import { buildActivityContext, currentRival, randomWorldNpc } from '../life/lifeContext';
+import { buildActivityContext, currentAge, currentRival, randomWorldNpc } from '../life/lifeContext';
 import { applyConsequence } from '../events/consequenceApplicator';
 import { spendEnergy } from '../live/energySystem';
 import { publishStoryBeat } from '../social/storyPost';
 import { saveProgress } from '../persistence';
 import { usePlayerStore } from '../../store/playerStore';
+import { usePeopleStore } from '../../store/peopleStore';
+import { getInteraction } from '../../data/life/interactions';
+import { FIRST_NAMES } from '../../data/life/names';
+import { PREGNANCY_WEEKS } from '../../constants/gameConfig';
+import {
+  applyInteractionEffect,
+  interactionAvailability,
+  newPersonId,
+  resolveInteraction,
+  type InteractionResult,
+} from '../life/peopleEngine';
+import { meetPerson } from '../life/peopleTick';
+import type { Person } from '../../types/people';
+import { pick } from '../../utils/random';
 
 /**
  * Thin action layer for player-initiated Phase 3 decisions made outside
@@ -78,7 +92,7 @@ export function playerStartTour(scale: VenueScale): boolean {
 // ─── Life: activities ──────────────────────────────────────────────────────
 
 export type DoActivityResult =
-  | { ok: true; result: ActivityResult; posted: boolean }
+  | { ok: true; result: ActivityResult; posted: boolean; met: Person | null }
   | { ok: false; reason: string };
 
 /**
@@ -100,10 +114,20 @@ export function playerDoActivity(activityId: string): DoActivityResult {
   if (!spendEnergy(activity.energyCost)) return { ok: false, reason: 'Too tired' };
 
   const rival = activity.npc === 'rival' ? currentRival() : null;
-  const npcName =
-    rival?.name ??
-    (activity.npc === 'world' ? randomWorldNpc()?.name : undefined) ??
-    'someone you half-recognize';
+  // Someone you might meet: single when the outcome could make them your
+  // partner, famous for a celebrity date, and never someone already in your
+  // life.
+  const meetsPartner = activity.outcomes.some((o) => o.meets === 'partner');
+  const npc =
+    activity.npc === 'world' || activity.npc === 'celebrity'
+      ? randomWorldNpc({
+          roles: meetsPartner ? ['artist', 'producer', 'influencer'] : ['artist', 'producer'],
+          unlinked: true,
+          single: meetsPartner,
+          famous: activity.npc === 'celebrity',
+        })
+      : null;
+  const npcName = rival?.name ?? npc?.name ?? pick([...FIRST_NAMES]);
 
   // Re-read stats after the energy spend so the tilt sees the live values.
   const live = buildActivityContext() ?? ctx;
@@ -131,6 +155,16 @@ export function playerDoActivity(activityId: string): DoActivityResult {
   useGameStore.getState().addStoryLine(result.line, logAs, storyId);
   const posted = result.social ? publishStoryBeat(result.social, storyId) !== null : false;
 
+  // The person met here joins the artist's life (a stranger without a world
+  // career when the world has nobody free).
+  let met: Person | null = null;
+  const meets = result.outcome.meets;
+  if (meets) {
+    met = npc
+      ? meetPerson(meets, npc, week)
+      : meetStranger(meets, npcName, week);
+  }
+
   useActivityStore.getState().record({
     activityId: activity.id,
     week,
@@ -138,5 +172,99 @@ export function playerDoActivity(activityId: string): DoActivityResult {
     reaction: applied.socialReaction,
   });
   saveProgress();
-  return { ok: true, result: { ...result, consequences }, posted };
+  return { ok: true, result: { ...result, consequences }, posted, met };
+}
+
+function meetStranger(
+  role: 'partner' | 'friend' | 'producer',
+  name: string,
+  week: number
+): Person | null {
+  const store = usePeopleStore.getState();
+  if (role === 'partner' && store.people.some((p) => p.role === 'partner')) return null;
+  const person: Person = {
+    id: newPersonId(),
+    name,
+    role,
+    title: role === 'partner' ? 'your partner' : role === 'friend' ? 'your friend' : 'your producer',
+    affinity: role === 'partner' ? 30 : 20,
+    traits: [],
+    sinceWeek: week,
+    lastSeenWeek: week,
+    ...(role === 'partner' ? { bond: 'dating' as const } : {}),
+  };
+  store.addPerson(person);
+  return person;
+}
+
+// ─── Life: people ──────────────────────────────────────────────────────────
+
+export type InteractResult =
+  | { ok: true; result: InteractionResult; person: Person | null; posted: boolean }
+  | { ok: false; reason: string };
+
+/**
+ * Do something with someone in the artist's life. Same shape as an
+ * activity: resolve (pure), apply through the consequence pipeline, write the
+ * Deck line, post big moments. Then the relationship itself changes:
+ * affinity, and for proposals, weddings, breakups and babies, its structure.
+ */
+export function playerInteract(personId: string, interactionId: string): InteractResult {
+  const interaction = getInteraction(interactionId);
+  const people = usePeopleStore.getState();
+  const person = people.get(personId);
+  const player = usePlayerStore.getState().player;
+  const age = currentAge();
+  if (!interaction || !person || !player || age === null) {
+    return { ok: false, reason: 'Nothing to do' };
+  }
+
+  const week = useGameStore.getState().week;
+  const ctx = {
+    week,
+    age,
+    energy: player.stats.energy,
+    money: player.money,
+    giftedThisWeek: people.giftedIn(week),
+    expecting: people.pendingBirth !== null,
+  };
+  const availability = interactionAvailability(interaction, person, ctx);
+  if (!availability.ok) return availability;
+  if (!spendEnergy(interaction.energyCost)) return { ok: false, reason: 'Too tired' };
+
+  const result = resolveInteraction(interaction, person, ctx, player.artistName);
+  applyConsequence(result.consequences, week);
+
+  const store = usePeopleStore.getState();
+  store.adjustAffinity(person.id, result.affinityDelta);
+  store.markSeen(person.id, week);
+  if (result.gifted > 0) store.recordGift(week, result.gifted);
+  if (result.addTrait) {
+    const trait = result.addTrait;
+    store.setPeople(
+      usePeopleStore.getState().people.map((p) =>
+        p.id === person.id && !p.traits.includes(trait)
+          ? { ...p, traits: [...p.traits, trait] }
+          : p
+      )
+    );
+  }
+  if (result.effect === 'conceive') {
+    store.setPendingBirth({ dueWeek: week + PREGNANCY_WEEKS, otherParentId: person.id });
+  } else if (result.effect) {
+    store.setPeople(applyInteractionEffect(usePeopleStore.getState().people, person.id, result.effect));
+  }
+
+  const storyId = `person:${interaction.id}`;
+  useGameStore.getState().addStoryLine(result.line, interaction.logAs ?? 'personal', storyId);
+  const posted = result.social ? publishStoryBeat(result.social, storyId) !== null : false;
+  useActivityStore.getState().queueReaction(result.consequences.socialReaction ?? 'none', storyId);
+
+  saveProgress();
+  return {
+    ok: true,
+    result,
+    person: usePeopleStore.getState().get(person.id) ?? null,
+    posted,
+  };
 }

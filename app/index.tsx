@@ -23,6 +23,8 @@ import { usePremiumStore } from '../store/premiumStore';
 import { useCommunityStore } from '../store/communityStore';
 import { useWorldStore } from '../store/worldStore';
 import { useActivityStore } from '../store/activityStore';
+import { usePeopleStore } from '../store/peopleStore';
+import { ensureFamily } from '../systems/life/peopleTick';
 import { refreshCommunity } from '../systems/community';
 import { bootstrapWorld } from '../systems/weekEngine';
 import { loadBudget } from '../ai/budget/ledger';
@@ -53,6 +55,7 @@ export default function Index() {
     usePlanStore.getState().load();
     useCommunityStore.getState().load();
     useActivityStore.getState().load();
+    usePeopleStore.getState().load();
     // Account-level premium entitlements (own table; survive retirement).
     usePremiumStore.getState().load();
     usePremiumStore.getState().ensureStarter();
@@ -65,6 +68,8 @@ export default function Index() {
     if (existing && !useWorldStore.getState().world) {
       bootstrapWorld(existing.createdAt);
     }
+    // Careers from before People get their family now.
+    if (existing) ensureFamily();
 
     setReady(true);
     // Fire-and-forget: refresh the anonymous community snapshot (offline-safe).

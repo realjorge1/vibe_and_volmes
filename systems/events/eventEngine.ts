@@ -2,6 +2,9 @@ import type { GameEvent, EventTrigger, EventChoice } from '../../types/events';
 import type { PlayerStats } from '../../types/player';
 import type { MentalState } from '../../types/industry';
 import type { LifeStageId } from '../../types/life';
+import type { Person } from '../../types/people';
+import { activePeople, partnerOf } from '../life/peopleEngine';
+import { hasRoles, personalizeEvent, type NewcomerCandidate } from './personalize';
 import { ALL_EVENTS } from '../../data/events';
 import { getFameLevelNumber } from '../../utils/statHelpers';
 import { EVENTS_PER_WEEK } from '../../constants/gameConfig';
@@ -28,6 +31,10 @@ export interface EventContext {
   // ─── Life context ───
   age: number;
   lifeStage: LifeStageId;
+  /** The artist's people (estranged included; the triggers skip them). */
+  people: Person[];
+  /** Strangers an event can introduce as `{new}` (unlinked world NPCs). */
+  newcomers: NewcomerCandidate[];
 }
 
 export function checkTrigger(trigger: EventTrigger, ctx: EventContext): boolean {
@@ -90,6 +97,24 @@ export function checkTrigger(trigger: EventTrigger, ctx: EventContext): boolean 
       return ctx.age <= (trigger.value ?? Number.POSITIVE_INFINITY);
     case 'life_stage':
       return ctx.lifeStage === trigger.lifeStage;
+    case 'has_partner': {
+      const partner = partnerOf(activePeople(ctx.people));
+      return !!partner && (!trigger.bond || partner.bond === trigger.bond);
+    }
+    case 'has_child':
+      return activePeople(ctx.people).some((p) => p.role === 'child');
+    case 'has_person':
+      return activePeople(ctx.people).some((p) => p.role === trigger.role);
+    case 'lacks_person':
+      return !activePeople(ctx.people).some((p) => p.role === trigger.role);
+    case 'person_affinity_lte':
+      return activePeople(ctx.people).some(
+        (p) => p.role === trigger.role && p.affinity <= (trigger.value ?? 0)
+      );
+    case 'person_affinity_gte':
+      return activePeople(ctx.people).some(
+        (p) => p.role === trigger.role && p.affinity >= (trigger.value ?? 0)
+      );
     default:
       return false;
   }
@@ -105,6 +130,8 @@ function passesCooldown(event: GameEvent, ctx: EventContext): boolean {
 export function isEventEligible(event: GameEvent, ctx: EventContext): boolean {
   if (event.unique && ctx.eventHistory.includes(event.id)) return false;
   if (!passesCooldown(event, ctx)) return false;
+  // Text that names a role needs someone in that role to name.
+  if (!hasRoles(event, ctx.people)) return false;
   return event.triggers.every((t) => checkTrigger(t, ctx));
 }
 
@@ -148,5 +175,6 @@ export function generateWeekEvents(ctx: EventContext): GameEvent[] {
     candidates = candidates.filter((e) => e.id !== picked.id);
   }
 
-  return selected;
+  // Fill in the people each event talks about, once, as it is slated.
+  return selected.map((e) => personalizeEvent(e, ctx.people, ctx.newcomers));
 }

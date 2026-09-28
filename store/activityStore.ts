@@ -32,6 +32,8 @@ interface ActivityActions {
     earned: number;
     reaction: SocialReactionType;
   }) => void;
+  /** Queue a reaction from outside the activity menu (people, …). */
+  queueReaction: (reaction: SocialReactionType, storyId: string) => void;
   /** Hand the queued reactions to the week transition and clear them. */
   drainPending: () => { reactions: SocialReactionType[]; storyIds: string[] };
   save: () => void;
@@ -71,6 +73,15 @@ export const useActivityStore = create<ActivityState & ActivityActions>((set, ge
       pendingReactions:
         reaction === 'none' ? s.pendingReactions : [...s.pendingReactions, reaction],
       pendingStoryIds: [...s.pendingStoryIds, `activity:${activityId}`],
+    });
+  },
+
+  queueReaction(reaction, storyId) {
+    const s = get();
+    set({
+      pendingReactions:
+        reaction === 'none' ? s.pendingReactions : [...s.pendingReactions, reaction],
+      pendingStoryIds: [...s.pendingStoryIds, storyId],
     });
   },
 

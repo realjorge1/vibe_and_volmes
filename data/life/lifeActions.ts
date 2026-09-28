@@ -169,8 +169,9 @@ export const LIFE_ACTIVITIES: LifeActivity[] = [
             { stat: 'industryRespect', delta: 2 },
           ],
           flavorText:
-            'The session with {npc} ran until sunrise. You left with three ideas that feel like singles.',
+            "The session with {npc} ran until sunrise. You left with three ideas that feel like singles, and {npc}'s number.",
         },
+        meets: 'producer',
       },
       {
         id: 'workmanlike',
@@ -519,6 +520,7 @@ export const LIFE_ACTIVITIES: LifeActivity[] = [
           ],
           flavorText: 'You ended up in a booth with {npc}. You swapped numbers before last call.',
         },
+        meets: 'friend',
       },
       {
         id: 'good-night',
@@ -573,6 +575,7 @@ export const LIFE_ACTIVITIES: LifeActivity[] = [
           statChanges: [{ stat: 'industryRespect', delta: 4 }],
           flavorText: '{npc} pulled you into a studio at 4 a.m. The demo is actually good.',
         },
+        meets: 'friend',
       },
       {
         id: 'crypto-kitchen',
@@ -655,6 +658,8 @@ export const LIFE_ACTIVITIES: LifeActivity[] = [
     energyCost: 10,
     moneyCost: 80,
     skill: 'charisma',
+    npc: 'world',
+    gates: { single: true },
     outcomes: [
       {
         id: 'spark',
@@ -663,15 +668,17 @@ export const LIFE_ACTIVITIES: LifeActivity[] = [
         consequences: {
           statChanges: [{ stat: 'mentalHealth', delta: 6 }],
           mentalChanges: [{ axis: 'isolation', delta: -6 }],
-          flavorText: 'Dinner turned into a walk turned into sunrise. You are texting already.',
+          flavorText:
+            'Dinner with {npc} turned into a walk turned into sunrise. You are seeing each other now.',
         },
+        meets: 'partner',
       },
       {
         id: 'fine',
         weight: 4,
         consequences: {
           statChanges: [{ stat: 'mentalHealth', delta: 2 }],
-          flavorText: 'A perfectly nice date. You will probably not see them again.',
+          flavorText: 'A perfectly nice date with {npc}. You will probably not see each other again.',
         },
       },
       {
@@ -680,7 +687,7 @@ export const LIFE_ACTIVITIES: LifeActivity[] = [
         luck: 'bad',
         consequences: {
           statChanges: [{ stat: 'mentalHealth', delta: -2 }],
-          flavorText: 'Your date talked about their ex for two hours, then asked you to split it.',
+          flavorText: '{npc} talked about their ex for two hours, then asked you to split the bill.',
         },
       },
     ],
@@ -692,14 +699,18 @@ export const LIFE_ACTIVITIES: LifeActivity[] = [
     blurb: 'Swipe until your thumb gives up.',
     icon: 'phone-portrait-outline',
     energyCost: 5,
+    npc: 'world',
+    gates: { single: true },
     outcomes: [
       {
         id: 'match',
         weight: 3,
         consequences: {
           statChanges: [{ stat: 'mentalHealth', delta: 3 }],
-          flavorText: 'A promising match on the dating app. They like your music. Or say they do.',
+          flavorText:
+            'You matched with {npc} on the dating app. Three dates later, it is official.',
         },
+        meets: 'partner',
       },
       {
         id: 'nothing',
@@ -743,8 +754,8 @@ export const LIFE_ACTIVITIES: LifeActivity[] = [
     energyCost: 15,
     moneyCost: 500,
     skill: 'charisma',
-    npc: 'world',
-    gates: { minStage: 'emerging' },
+    npc: 'celebrity',
+    gates: { minStage: 'emerging', single: true },
     cooldownWeeks: 4,
     outcomes: [
       {
@@ -754,8 +765,9 @@ export const LIFE_ACTIVITIES: LifeActivity[] = [
           statChanges: [{ stat: 'reputation', delta: 1 }],
           fansDelta: 3_000,
           socialReaction: 'viral',
-          flavorText: 'You and {npc} got photographed at dinner. The internet has already named you.',
+          flavorText: 'You and {npc} got photographed at dinner. The internet has already named you. So, apparently, it is official.',
         },
+        meets: 'partner',
         social: {
           sentiment: 'news',
           from: 'gossip',
@@ -770,8 +782,9 @@ export const LIFE_ACTIVITIES: LifeActivity[] = [
         consequences: {
           statChanges: [{ stat: 'mentalHealth', delta: 6 }],
           mentalChanges: [{ axis: 'isolation', delta: -5 }],
-          flavorText: 'Dinner with {npc}. They are funnier in person, and nobody took a photo.',
+          flavorText: 'Dinner with {npc}. They are funnier in person, nobody took a photo, and you are seeing each other now.',
         },
+        meets: 'partner',
       },
       {
         id: 'pr-stunt',

@@ -7,11 +7,15 @@ import {
   type Segment,
 } from '../../components/ui/SegmentedControl';
 import { ActivitiesSection } from '../../components/life/ActivitiesSection';
+import { PeopleSection } from '../../components/life/PeopleSection';
 import { SPACING } from '../../constants/theme';
 
-type Tab = 'activities';
+type Tab = 'activities' | 'people';
 
-const SEGMENTS: readonly Segment<Tab>[] = [{ key: 'activities', label: 'Activities' }];
+const SEGMENTS: readonly Segment<Tab>[] = [
+  { key: 'activities', label: 'Activities' },
+  { key: 'people', label: 'People' },
+];
 
 /**
  * Life — everything outside the business: what the artist does this week,
@@ -33,6 +37,7 @@ export default function Life() {
         style={styles.segment}
       />
       {tab === 'activities' && <ActivitiesSection />}
+      {tab === 'people' && <PeopleSection />}
     </Screen>
   );
 }

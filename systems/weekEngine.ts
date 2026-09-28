@@ -25,9 +25,12 @@ import { pruneCache } from '../ai/cache/genCache';
 import { weeklyStatDecay } from '../utils/statHelpers';
 import { ageAtWeek, birthdayBeat, birthdayLines, lifeStageForAge } from './life/age';
 import { useActivityStore } from '../store/activityStore';
+import { usePeopleStore } from '../store/peopleStore';
+import { ensureFamily, runPeopleWeek } from './life/peopleTick';
+import { newcomerCandidates } from './life/lifeContext';
 import { saveAll } from './persistence';
 
-function buildEventContext(): EventContext {
+export function buildEventContext(): EventContext {
   const player = usePlayerStore.getState().player!;
   const game = useGameStore.getState();
   const music = useMusicStore.getState();
@@ -37,6 +40,8 @@ function buildEventContext(): EventContext {
   return {
     age,
     lifeStage: lifeStageForAge(age).id,
+    people: usePeopleStore.getState().people,
+    newcomers: newcomerCandidates(),
     stats: player.stats,
     week: game.week,
     tags: game.playerTags,
@@ -132,6 +137,8 @@ export function initializeFirstWeek(): void {
   if (player && !useWorldStore.getState().world) {
     bootstrapWorld(player.createdAt);
   }
+  // The family exists from the first week, before its first slate.
+  ensureFamily();
 
   const ctx = buildEventContext();
   useGameStore.getState().setActiveEvents(generateWeekEvents(ctx));
@@ -243,6 +250,10 @@ export function runWeekTransition(
   if (worldEvents.length > 0) {
     useGameStore.getState().addWeekSummaryNotes([`🌍 ${worldEvents[0].headline}`]);
   }
+
+  // 5c. The artist's personal life: neglect, allowances, births, partners
+  //     walking out, and headlines about the people they know.
+  runPeopleWeek(newWeek, worldEvents);
 
   // 6. Stage next week's events (now aware of Phase 3 state).
   const ctx = buildEventContext();

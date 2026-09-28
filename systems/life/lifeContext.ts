@@ -9,7 +9,10 @@ import { stageForProgress } from '../career/careerStage';
 import { ageAtWeek } from './age';
 import type { ActivityContext } from './activityEngine';
 import type { Npc } from '../../types/world';
-import { pick } from '../../utils/random';
+import type { NewcomerCandidate } from '../events/personalize';
+import { usePeopleStore } from '../../store/peopleStore';
+import { partnerOf } from './peopleEngine';
+import { shuffle } from '../../utils/random';
 
 /**
  * Store reads for the Life systems, kept out of the pure engines. Everything
@@ -45,16 +48,60 @@ export function currentRival(): { id: string; name: string } | null {
   return atOdds ? { id: atOdds.id, name: atOdds.name } : null;
 }
 
-/** A random active artist or producer from the living world, if one exists. */
-export function randomWorldNpc(
-  roles: Npc['role'][] = ['artist', 'producer']
-): Npc | null {
+export interface WorldNpcQuery {
+  roles?: Npc['role'][];
+  /** Skip NPCs already in the artist's life. */
+  unlinked?: boolean;
+  /** Skip NPCs currently dating someone in the world. */
+  single?: boolean;
+  /** Draw from the most-followed quarter of the pool. */
+  famous?: boolean;
+}
+
+function isDating(npc: Npc): boolean {
+  return Object.values(npc.relationships).some((r) => r.status === 'dating');
+}
+
+/** Living-world NPCs matching the query, in random order. */
+export function worldNpcs({
+  roles = ['artist', 'producer'],
+  unlinked = false,
+  single = false,
+  famous = false,
+}: WorldNpcQuery = {}): Npc[] {
   const world = useWorldStore.getState().world;
-  if (!world) return null;
-  const pool = world.npcIds
+  if (!world) return [];
+  const linked = new Set(
+    unlinked ? usePeopleStore.getState().people.map((p) => p.npcId).filter(Boolean) : []
+  );
+  let pool = world.npcIds
     .map((id) => world.npcs[id])
-    .filter((n) => n && n.active && roles.includes(n.role));
-  return pool.length > 0 ? pick(pool) : null;
+    .filter(
+      (n) =>
+        n &&
+        n.active &&
+        roles.includes(n.role) &&
+        !linked.has(n.id) &&
+        (!single || !isDating(n))
+    );
+  if (famous && pool.length > 4) {
+    pool = [...pool]
+      .sort((a, b) => b.social.followers - a.social.followers)
+      .slice(0, Math.ceil(pool.length / 4));
+  }
+  return shuffle(pool);
+}
+
+/** A random active artist or producer from the living world, if one exists. */
+export function randomWorldNpc(query: WorldNpcQuery = {}): Npc | null {
+  return worldNpcs(query)[0] ?? null;
+}
+
+/** Strangers events can introduce as `{new}`. */
+export function newcomerCandidates(n = 3): NewcomerCandidate[] {
+  return worldNpcs({ roles: ['artist', 'producer', 'influencer'], unlinked: true })
+    .slice(0, n)
+    .map((npc) => ({ name: npc.name, npcId: npc.id }));
 }
 
 export function buildActivityContext(): ActivityContext | null {
@@ -73,6 +120,7 @@ export function buildActivityContext(): ActivityContext | null {
     money: player.money,
     tags: game.playerTags,
     hasRival: currentRival() !== null,
+    hasPartner: partnerOf(usePeopleStore.getState().people) !== undefined,
     doneThisWeek: tally.done,
     earnedThisWeek: tally.earned,
     lastDone: activities.lastDone,

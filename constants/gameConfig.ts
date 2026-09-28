@@ -91,6 +91,29 @@ export const ACTIVITIES_PER_WEEK = 3;
  */
 export const ACTIVITY_EARNINGS_CAP_PER_WEEK = 2_500;
 
+// ─── People ───────────────────────────────────────────────────────────────
+/** Most the artist's people can hand over in a week (asks + allowances). */
+export const PEOPLE_MONEY_CAP_PER_WEEK = 1_000;
+/** Allowances are paid while that person's affinity is at least this. */
+export const ALLOWANCE_MIN_AFFINITY = 25;
+/** …and stop for good once the artist is this rich. */
+export const ALLOWANCE_STOPS_AT = 50_000;
+/** Weeks from "expecting" to birth: nine months of a WEEKS_PER_YEAR year. */
+export const PREGNANCY_WEEKS = Math.round((WEEKS_PER_YEAR * 9) / 12);
+/** Friends kept at once; the Nightlife met-someone beat stops adding past it. */
+export const MAX_FRIENDS = 6;
+/**
+ * Neglect: after `graceWeeks` without the artist making time, affinity drops
+ * `perWeek` each week. Supportive family never drift below SUPPORTIVE_FLOOR.
+ */
+export const NEGLECT: Record<'partner' | 'child' | 'family' | 'other', { graceWeeks: number; perWeek: number }> = {
+  partner: { graceWeeks: 2, perWeek: 2 },
+  child: { graceWeeks: 4, perWeek: 1 },
+  family: { graceWeeks: 6, perWeek: 1 },
+  other: { graceWeeks: 4, perWeek: 1 },
+};
+export const SUPPORTIVE_FLOOR = 20;
+
 // Track quality floor/ceiling multipliers
 export const TRACK_QUALITY_WEIGHTS = {
   talent: 0.30,

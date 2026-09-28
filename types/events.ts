@@ -1,5 +1,6 @@
 import type { PlayerStats } from './player';
 import type { LifeStageId } from './life';
+import type { PartnerBond, PersonRole } from './people';
 
 export type EventCategory =
   | 'career'
@@ -37,7 +38,14 @@ export type TriggerType =
   // ─── Life: age ───
   | 'age_gte'
   | 'age_lte'
-  | 'life_stage';
+  | 'life_stage'
+  // ─── Life: people ───
+  | 'has_partner'
+  | 'has_child'
+  | 'has_person'
+  | 'lacks_person'
+  | 'person_affinity_lte'
+  | 'person_affinity_gte';
 
 export type MentalAxis =
   | 'burnout'
@@ -56,6 +64,8 @@ export interface EventTrigger {
   phase?: string;
   era?: string; // Phase 5: era id for `era_is`
   lifeStage?: LifeStageId; // for `life_stage`
+  role?: PersonRole; // for the person triggers
+  bond?: PartnerBond; // `has_partner`: only partners at this stage
 }
 
 export interface StatChange {
@@ -103,7 +113,31 @@ export interface EventConsequence {
     severity: number;
     tags: string[];
   };
+  // ─── Life: people ───
+  /**
+   * Affinity changes. `role` targets the person the event's text named for
+   * that role (bound when the event was slated); `personId` is filled in then.
+   */
+  personChanges?: PersonChange[];
+  /** Someone new enters the artist's life. `{new}` in the text is their name. */
+  addPerson?: NewPerson;
   flavorText: string;
+}
+
+export interface PersonChange {
+  role: PersonRole;
+  delta: number;
+  personId?: string;
+}
+
+export interface NewPerson {
+  role: PersonRole;
+  title: string;
+  affinity: number;
+  /** Drawn from the living world when true; filled in when slated. */
+  fromWorld?: boolean;
+  name?: string;
+  npcId?: string;
 }
 
 export interface EventChoice {

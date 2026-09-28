@@ -25,6 +25,7 @@ function ctx(over: Partial<ActivityContext> = {}): ActivityContext {
     money: 10_000,
     tags: [],
     hasRival: false,
+    hasPartner: false,
     doneThisWeek: 0,
     earnedThisWeek: 0,
     lastDone: {},

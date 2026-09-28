@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import type { GameEvent, EventHistoryEntry, EventCategory } from '../types/events';
 import { saveData, loadData, logEvent } from '../database/gameRepository';
-import { getEventById } from '../data/events';
 
 /** Sentinel eventId for notes the week transition writes (phase 3, world). */
 export const SIM_EVENT_ID = 'phase3-sim';
@@ -174,21 +173,18 @@ export const useGameStore = create<GameStore>((set, get) => ({
       eventCooldowns: s.eventCooldowns,
       historyLog: s.historyLog,
       // The week in progress, so a relaunch resumes mid-week instead of
-      // dropping the pending decisions and this week's Deck lines.
-      activeEventIds: s.activeEvents.map((e) => e.id),
+      // dropping the pending decisions and this week's Deck lines. Events
+      // are saved whole: they were personalized (people named) when slated.
+      activeEvents: s.activeEvents,
       pendingEventIndex: s.pendingEventIndex,
       lastWeekSummary: s.lastWeekSummary,
     });
   },
 
   loadGameState() {
-    const saved = loadData<
-      Partial<GameStoreState> & { activeEventIds?: string[] }
-    >('game');
+    const saved = loadData<Partial<GameStoreState>>('game');
     if (saved) {
-      const activeEvents = (saved.activeEventIds ?? [])
-        .map((id) => getEventById(id))
-        .filter((e): e is GameEvent => e !== undefined);
+      const activeEvents = saved.activeEvents ?? [];
       set({
         week: saved.week ?? 1,
         phase: saved.phase ?? 'playing',
@@ -197,8 +193,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
         eventCooldowns: saved.eventCooldowns ?? {},
         historyLog: saved.historyLog ?? [],
         activeEvents,
-        // An event removed from the catalog since the save shrinks the
-        // slate; never point past its end.
         pendingEventIndex: Math.min(saved.pendingEventIndex ?? 0, activeEvents.length),
         lastWeekSummary: saved.lastWeekSummary ?? [],
       });

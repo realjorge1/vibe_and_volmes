@@ -18,6 +18,7 @@ import { usePlanStore } from '../store/planStore';
 import { useCommunityStore } from '../store/communityStore';
 import { useWorldStore } from '../store/worldStore';
 import { useActivityStore } from '../store/activityStore';
+import { usePeopleStore } from '../store/peopleStore';
 
 /**
  * Every per-save store except the NPC world. Cheap enough to call after each
@@ -43,6 +44,7 @@ export function saveProgress(): void {
   usePlanStore.getState().save();
   useCommunityStore.getState().save();
   useActivityStore.getState().save();
+  usePeopleStore.getState().save();
   // Premium entitlements self-save on mutation (own table), like metaStore.
 }
 

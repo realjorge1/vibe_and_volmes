@@ -10,6 +10,8 @@ import { spawnControversy } from '../pr/prEngine';
 import { createSession } from '../media/mediaEngine';
 import { useLabelStore } from '../../store/labelStore';
 import { uid } from '../../utils/id';
+import { usePeopleStore } from '../../store/peopleStore';
+import { activePeople, newPersonId } from '../life/peopleEngine';
 
 export interface ConsequenceResult {
   socialReaction: SocialReactionType;
@@ -103,6 +105,38 @@ export function applyConsequence(
       resurfacedCount: 0,
       buried: false,
     });
+  }
+
+  // ─── Life: people ───
+
+  if (consequence.personChanges && consequence.personChanges.length > 0) {
+    const people = usePeopleStore.getState();
+    for (const pc of consequence.personChanges) {
+      const target =
+        (pc.personId && people.get(pc.personId)) ||
+        activePeople(people.people).find((p) => p.role === pc.role);
+      if (target) people.adjustAffinity(target.id, pc.delta);
+    }
+  }
+
+  if (consequence.addPerson) {
+    const np = consequence.addPerson;
+    const people = usePeopleStore.getState();
+    const alreadyThere = np.npcId && people.people.some((p) => p.npcId === np.npcId);
+    if (!alreadyThere) {
+      people.addPerson({
+        id: newPersonId(),
+        name: np.name ?? 'Someone new',
+        role: np.role,
+        title: np.title,
+        affinity: np.affinity,
+        traits: [],
+        npcId: np.npcId,
+        sinceWeek: week,
+        lastSeenWeek: week,
+        ...(np.role === 'partner' ? { bond: 'dating' as const } : {}),
+      });
+    }
   }
 
   return {

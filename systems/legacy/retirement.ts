@@ -22,6 +22,7 @@ import { useCommunityStore } from '../../store/communityStore';
 import { useWorldStore } from '../../store/worldStore';
 import { useLifeSimStore } from '../../store/lifeSimStore';
 import { useActivityStore } from '../../store/activityStore';
+import { usePeopleStore } from '../../store/peopleStore';
 
 export interface RetirementResult {
   dossier: CareerDossier;
@@ -71,6 +72,7 @@ export function retireCareer(): RetirementResult {
   usePlanStore.getState().reset();
   useCommunityStore.getState().reset();
   useActivityStore.getState().reset();
+  usePeopleStore.getState().reset();
   // The NPC world must be null here, or initializeFirstWeek() skips
   // bootstrapWorld() and the next career inherits this one's cast.
   useWorldStore.getState().reset();

@@ -35,7 +35,7 @@ export type ActivityCategory =
   | 'risky';
 
 /** Who `{npc}` names in an activity's text. */
-export type ActivityNpc = 'world' | 'rival';
+export type ActivityNpc = 'world' | 'celebrity' | 'rival';
 
 /** Hard requirements. Failing one shows the activity as locked. */
 export interface ActivityGates {
@@ -48,6 +48,8 @@ export interface ActivityGates {
   lacksTag?: string;
   /** Needs a rival to aim at (see `ActivityNpc`). */
   requiresRival?: boolean;
+  /** Only while the artist has no partner. */
+  single?: boolean;
 }
 
 export interface ActivityOutcome {
@@ -65,6 +67,8 @@ export interface ActivityOutcome {
   consequences: EventConsequence;
   /** Set on dramatic outcomes: a post that lands in the social feed. */
   social?: StoryBeat;
+  /** The `{npc}` met here joins the artist's people in this role. */
+  meets?: 'partner' | 'friend' | 'producer';
 }
 
 export interface LifeActivity {

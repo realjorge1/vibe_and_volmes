@@ -577,7 +577,7 @@ export const LIFE_EVENTS: GameEvent[] = [
     category: 'personal',
     title: 'The Call From Home',
     description:
-      'Your father had a fall. He is fine, mostly. Your mother says you do not need to come home, which means you do.',
+      '{ParentTitle}, {parent}, had a fall. Fine, mostly. {parent} says you do not need to come home, which means you do.',
     weight: 8,
     triggers: [{ type: 'age_gte', value: 35 }],
     choices: [
@@ -592,8 +592,9 @@ export const LIFE_EVENTS: GameEvent[] = [
           ],
           fansDelta: -500,
           moneyDelta: -1500,
+          personChanges: [{ role: 'parent', delta: 15 }],
           flavorText:
-            'A month of hospital coffee and old photo albums. You would do it again.',
+            'A month of hospital coffee and old photo albums with {parent}. You would do it again.',
         },
       },
       {
@@ -602,7 +603,8 @@ export const LIFE_EVENTS: GameEvent[] = [
         consequences: {
           statChanges: [{ stat: 'mentalHealth', delta: -3 }],
           moneyDelta: -3000,
-          flavorText: 'It helps. It is not the same as being there.',
+          personChanges: [{ role: 'parent', delta: 3 }],
+          flavorText: 'It helps. It is not the same as being there, and {parent} said so.',
         },
       },
       {
@@ -614,7 +616,8 @@ export const LIFE_EVENTS: GameEvent[] = [
             { stat: 'creativity', delta: 4 },
             { stat: 'mentalHealth', delta: -4 },
           ],
-          flavorText: 'You finish it at 4 a.m. You play it for him over the phone.',
+          personChanges: [{ role: 'parent', delta: 5 }],
+          flavorText: 'You finish it at 4 a.m. You play it for {parent} over the phone.',
         },
       },
     ],

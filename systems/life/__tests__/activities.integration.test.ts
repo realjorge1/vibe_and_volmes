@@ -72,15 +72,15 @@ test('dramatic outcomes reach the feed and the trending board', () => {
 
 test('the weekly cap holds, and the next week resets it', () => {
   for (let i = 0; i < ACTIVITIES_PER_WEEK; i++) {
-    assert.equal(playerDoActivity('dating-app').ok, true, `activity ${i + 1}`);
+    assert.equal(playerDoActivity('practice').ok, true, `activity ${i + 1}`);
   }
-  const blocked = playerDoActivity('dating-app');
+  const blocked = playerDoActivity('practice');
   assert.deepEqual(blocked, { ok: false, reason: 'No time left this week' });
 
   runWeekTransition([], []);
   useLiveStore.getState().setEnergyUpdatedAt(Date.now());
   usePlayerStore.getState().setStatDirect('energy', 100);
-  assert.equal(playerDoActivity('dating-app').ok, true);
+  assert.equal(playerDoActivity('practice').ok, true);
 });
 
 test('activity reactions feed the next week transition, once', () => {
@@ -115,8 +115,9 @@ test('the Deck column interleaves activity lines with decisions in order', () =>
     pendingIndex: s.pendingEventIndex,
   });
   const thisWeek = feed.items.slice(feed.items.findIndex((i) => i.kind === 'week' && i.isCurrent) + 1);
+  // Roll-over notes (the family's intro on week one) lead; ignore them here.
   const kinds = thisWeek
-    .filter((i) => i.kind !== 'active')
+    .filter((i) => i.kind === 'resolved' || (i.kind === 'note' && i.entry.eventId.startsWith(STORY_PREFIX)))
     .map((i) => (i.kind === 'note' ? i.entry.eventId : i.kind));
   assert.deepEqual(kinds, [
     `${STORY_PREFIX}activity:practice`,
