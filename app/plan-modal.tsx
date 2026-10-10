@@ -6,6 +6,8 @@ import { Screen } from '../components/ui/Screen';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Text } from '../components/ui/Typography';
+import { ScreenHeader } from '../components/ui/ScreenHeader';
+import { Orb3D } from '../components/fx/Orb3D';
 import { usePlayerStore } from '../store/playerStore';
 import { usePlanStore } from '../store/planStore';
 import { usePremiumStore } from '../store/premiumStore';
@@ -54,14 +56,14 @@ export default function PlanModal() {
   };
 
   return (
-    <Screen scroll>
-      <Text variant="title" style={styles.title}>
-        Daily Plan
-      </Text>
-      <Text variant="caption" muted style={styles.sub}>
-        Set a routine. While you&apos;re away, your days play out automatically —
-        come back to see what happened. Planning never costs energy.
-      </Text>
+    <Screen scroll tint={COLORS.accent}>
+      <ScreenHeader
+        eyebrow="ROUTINE"
+        title="Daily Plan"
+        subtitle="Set a routine. While you're away, your days play out automatically — come back to see what happened. Planning never costs energy."
+        accent={COLORS.accent}
+        right={<Orb3D size={52} color={COLORS.accent} icon="calendar" />}
+      />
 
       {/* Upcoming world + community moments */}
       <Card>
@@ -182,14 +184,12 @@ export default function PlanModal() {
         })}
       </View>
 
-      <Button label="Done" onPress={() => router.back()} style={styles.done} />
+      <Button label="Done" icon="checkmark" variant="brand" onPress={() => router.back()} style={styles.done} />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  title: { marginTop: SPACING.lg },
-  sub: { marginTop: SPACING.xs, marginBottom: SPACING.lg, lineHeight: 18 },
   upRow: {
     flexDirection: 'row',
     alignItems: 'center',

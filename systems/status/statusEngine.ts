@@ -12,6 +12,7 @@ import { awardXp, checkAchievements } from '../progression/xpEngine';
 import { pushNotification } from '../live/notify';
 import { pick, pickN, clamp } from '../../utils/random';
 import { saveProgress } from '../persistence';
+import { notifyPost } from '../notifications/triggers';
 
 type Verdict = NonNullable<PurchaseResult['verdict']>;
 
@@ -151,6 +152,7 @@ export function purchaseLuxury(itemId: string): PurchaseResult {
   const social = useSocialStore.getState();
   social.setFeed([...posts, ...social.feed].slice(0, 60));
   social.addToHistory(posts);
+  notifyPost(posts[0] ?? null, 6000);
 
   // 4. Status is progression.
   const toneMult = item.tone === 'iconic' ? 2.5 : item.tone === 'flashy' ? 1.5 : 1;

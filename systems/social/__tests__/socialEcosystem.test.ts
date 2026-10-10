@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { Player } from '../../../types/player';
-import type { PostSentiment } from '../../../types/social';
+import type { NpcAccount, PostSentiment } from '../../../types/social';
 import {
   deriveFanbase,
   segmentReaction,
@@ -10,8 +10,12 @@ import {
   FAN_SEGMENTS,
 } from '../fanbase';
 import {
+  accountAttention,
+  byAttention,
   computeEngagement,
   controversyFromReactions,
+  relevance,
+  withFameTone,
 } from '../platformAlgorithms';
 
 // NOTE: this suite deliberately exercises only the *pure* social modules
@@ -89,7 +93,7 @@ test('platform algorithms produce distinct engagement profiles', () => {
   const flashpic = computeEngagement({ ...base, platform: 'flashpic' });
 
   // Short video is a discovery/virality machine: far more views.
-  assert.ok(tunetok.views > flashpic.views * 2, 'HypeFeed out-reaches VibeSnap on trend');
+  assert.ok(tunetok.views > flashpic.views * 2, 'TokTalk out-reaches VibeGram on trend');
 
   // Controversy turns Chirp into a comment-ratio machine.
   const calm = computeEngagement({ ...base, platform: 'chirper', sentiment: 'neutral', controversyLevel: 0 });
@@ -111,4 +115,49 @@ test('controversyFromReactions scales with negativity and weak reputation', () =
     controversyFromReactions(['negative'], 10) > controversyFromReactions(['negative'], 90),
     'fragile reputation reads as more controversial'
   );
+});
+
+test('relevance: a big page posting about an unknown gets scrolled past', () => {
+  assert.ok(relevance(0, 2_000_000) < 0.2, 'nobody cares yet');
+  assert.ok(relevance(0, 300) > 0.8, "a friend's followers still see it");
+  assert.ok(relevance(10_000_000, 2_000_000) > 0.99, 'a star travels everywhere');
+  const unknown = computeEngagement({
+    platform: 'chirper', followers: 2_000_000, playerFans: 0, sentiment: 'news',
+    controversyLevel: 0, reputation: 50, trendAlignment: 0,
+  });
+  const star = computeEngagement({
+    platform: 'chirper', followers: 2_000_000, playerFans: 5_000_000, sentiment: 'news',
+    controversyLevel: 0, reputation: 50, trendAlignment: 0,
+  });
+  assert.ok(star.views > unknown.views * 5);
+});
+
+test("critics and listeners find an unknown first; the big pages come later", () => {
+  assert.ok(accountAttention('critic', 0) > accountAttention('news', 0) * 20);
+  assert.ok(accountAttention('critic', 0) > accountAttention('stan', 0) * 20);
+  for (const type of ['stan', 'gossip', 'news', 'rival-fan', 'industry'] as const) {
+    assert.ok(accountAttention(type, 5_000_000) > accountAttention(type, 0), `${type} grows with fame`);
+  }
+
+  const mk = (id: string, accountType: NpcAccount['accountType']): NpcAccount => ({
+    id, username: id, handle: id, accountType, followers: 1_000, isVerified: false,
+    preferredPlatforms: ['chirper'],
+  });
+  const pool = [mk('n1', 'news'), mk('g1', 'gossip'), mk('s1', 'stan'), mk('c1', 'critic')];
+  let criticFirst = 0;
+  let seed = 7;
+  const rng = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < 200; i++) {
+    if (byAttention(pool, 0, rng)[0].accountType === 'critic') criticFirst++;
+  }
+  assert.ok(criticFirst > 160, `a critic usually leads an unknown's feed (${criticFirst}/200)`);
+});
+
+test('withFameTone: an unknown hears critique, a star barely changes', () => {
+  const base = { hype: 10, positive: 10, neutral: 10, critical: 10, hostile: 2, meme: 10, news: 3, shade: 3 };
+  const fresh = withFameTone(base, 0);
+  assert.ok(fresh.critical > base.critical && fresh.hype < base.hype && fresh.meme < base.meme);
+  const star = withFameTone(base, 10_000_000);
+  assert.equal(star.critical, base.critical);
+  assert.equal(star.hype, base.hype);
 });

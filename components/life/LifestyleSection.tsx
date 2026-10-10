@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import type { LuxuryCategory } from '../../types/status';
 import { usePlayerStore } from '../../store/playerStore';
 import { useStatusStore } from '../../store/statusStore';
@@ -9,8 +11,13 @@ import { purchaseLuxury } from '../../systems/status/statusEngine';
 import { Card } from '../ui/Card';
 import { Text } from '../ui/Typography';
 import { Metric } from '../ui/Metric';
+import { SectionTitle } from '../ui/SectionTitle';
+import { PressableScale } from '../ui/PressableScale';
+import { Grid } from '../ui/Grid';
+import { Tile3D } from '../fx/Tile3D';
+import { GradientText } from '../fx/GradientText';
 import { formatMoney } from '../../utils/formatters';
-import { COLORS, SPACING, RADIUS } from '../../constants/theme';
+import { COLORS, GRADIENTS, SPACING, RADIUS, shade, ifAnimated, withAlpha } from '../../constants/theme';
 
 const CATEGORY_ORDER: LuxuryCategory[] = [
   'fashion', 'jewelry', 'watch', 'car', 'property', 'jet', 'party', 'cosmetic', 'security', 'art',
@@ -19,6 +26,16 @@ const CATEGORY_LABEL: Record<LuxuryCategory, string> = {
   fashion: 'Fashion', jewelry: 'Jewelry', watch: 'Watches', car: 'Cars',
   property: 'Property', jet: 'Jets & Travel', party: 'Lifestyle',
   cosmetic: 'Image', security: 'Security', art: 'Art',
+};
+const CATEGORY_ICON: Record<LuxuryCategory, string> = {
+  fashion: 'shirt', jewelry: 'diamond', watch: 'watch', car: 'car-sport',
+  property: 'business', jet: 'airplane', party: 'wine',
+  cosmetic: 'sparkles', security: 'shield-checkmark', art: 'color-palette',
+};
+const CATEGORY_COLOR: Record<LuxuryCategory, string> = {
+  fashion: '#FF7EBD', jewelry: COLORS.accent, watch: COLORS.gold, car: COLORS.negative,
+  property: COLORS.primary, jet: '#4DA8FF', party: COLORS.secondary,
+  cosmetic: '#B79CFF', security: COLORS.positive, art: '#FF8A3D',
 };
 
 /**
@@ -44,7 +61,7 @@ export function LifestyleSection() {
 
   const buy = (id: string) => {
     const r = purchaseLuxury(id);
-    if (r.ok) setFlash(`Acquired ${r.item?.name}. ${verdictText(r.verdict!)}`);
+    if (r.ok) setFlash(`Acquired ${r.item?.name}. “${r.item?.flexLine}” ${verdictText(r.verdict!)}`);
     else if (r.reason === 'funds') setFlash('Not enough money for that. Keep grinding.');
     else if (r.reason === 'level') setFlash(`Locked — reach career level ${r.item?.levelReq}.`);
     else if (r.reason === 'owned') setFlash('You already own that.');
@@ -53,99 +70,95 @@ export function LifestyleSection() {
   return (
     <View>
       <Card accent={tier.color}>
-        <View style={styles.scoreRow}>
-          <Metric label={`Status · ${tier.label}`} value={`${score}`} large color={tier.color} />
-        </View>
+        <Text variant="label" muted center>
+          STATUS · {tier.label.toUpperCase()}
+        </Text>
+        <GradientText
+          text={`${score}`}
+          size={40}
+          colors={[shade(tier.color, 0.5), tier.color]}
+          align="center"
+          style={styles.score}
+        />
         <View style={styles.walletRow}>
-          <Metric label="Cash" value={formatMoney(money)} color={COLORS.primary} />
-          <Metric label="Flexed" value={formatMoney(totalSpent)} align="center" color={COLORS.textSecondary} />
-          <Metric label="Items" value={`${owned.length}`} align="right" color={COLORS.textSecondary} />
+          <Metric label="Cash" value={formatMoney(money)} color={COLORS.gold} align="center" style={styles.flex} />
+          <Metric label="Flexed" value={formatMoney(totalSpent)} align="center" color={COLORS.textSecondary} style={styles.flex} />
+          <Metric label="Items" value={`${owned.length}`} align="center" color={COLORS.textSecondary} style={styles.flex} />
         </View>
       </Card>
 
       {flash && (
-        <Pressable onPress={() => setFlash(null)}>
-          <Card accent={COLORS.primary}>
-            <Text variant="caption">{flash}</Text>
-            <Text variant="label" muted style={styles.dismiss}>
-              tap to dismiss
-            </Text>
-          </Card>
-        </Pressable>
+        <Animated.View key={flash} entering={ifAnimated(FadeInDown.springify().damping(15))}>
+          <Pressable onPress={() => setFlash(null)}>
+            <Card accent={COLORS.gold}>
+              <Text variant="body">{flash}</Text>
+              <Text variant="label" muted style={styles.dismiss}>
+                TAP TO DISMISS
+              </Text>
+            </Card>
+          </Pressable>
+        </Animated.View>
       )}
 
       {/* ── Catalog ───────────────────────────────────────────── */}
       {CATEGORY_ORDER.map((cat) => {
         const items = LUXURY_CATALOG.filter((i) => i.category === cat);
         if (items.length === 0) return null;
+        const tint = CATEGORY_COLOR[cat];
         return (
           <View key={cat}>
-            <Text variant="heading" style={styles.section}>
+            <SectionTitle accent={tint} meta={`${items.length}`}>
               {CATEGORY_LABEL[cat]}
-            </Text>
-            {items.map((item) => {
-              const isOwned = ownedIds.has(item.id);
-              const locked = level < item.levelReq;
-              const afford = money >= item.cost;
-              const accent = isOwned
-                ? COLORS.primary
-                : afford && !locked
-                  ? COLORS.gold
-                  : COLORS.border;
-              return (
-                <Card key={item.id} accent={accent}>
-                  <View style={styles.itemRow}>
-                    <View style={styles.flex}>
-                      <Text variant="subheading">{item.name}</Text>
-                      <Text variant="caption" muted style={styles.flex}>
-                        “{item.flexLine}”
-                      </Text>
-                      <Text variant="label" muted style={styles.meta}>
-                        +{item.statusValue} STATUS · {item.tone.toUpperCase()}
-                        {item.upkeep > 0 ? ` · ${formatMoney(item.upkeep)}/WK UPKEEP` : ''}
-                        {locked ? ` · LV ${item.levelReq}` : ''}
-                      </Text>
-                    </View>
-                    <View style={styles.buyCol}>
+            </SectionTitle>
+            <Grid columns={2}>
+              {items.map((item) => {
+                const isOwned = ownedIds.has(item.id);
+                const locked = level < item.levelReq;
+                const afford = money >= item.cost;
+                const canBuy = !isOwned && !locked && afford;
+                return (
+                  <View key={item.id} style={[styles.item, isOwned && styles.itemOwned]}>
+                    <Tile3D
+                      icon={locked ? 'lock-closed' : CATEGORY_ICON[cat]}
+                      color={tint}
+                      size={46}
+                      dim={locked || (!afford && !isOwned)}
+                    />
+                    <Text variant="subheading" center numberOfLines={2} style={styles.itemName}>
+                      {item.name}
+                    </Text>
+                    <Text variant="label" muted center numberOfLines={1} style={styles.meta}>
+                      +{item.statusValue} STATUS
+                      {item.upkeep > 0 ? ` · ${formatMoney(item.upkeep)}/WK` : ''}
+                      {locked ? ` · LV ${item.levelReq}` : ''}
+                    </Text>
+                    <Text variant="subheading" weight="bold" color={afford || isOwned ? COLORS.gold : COLORS.textMuted}>
+                      {formatMoney(item.cost)}
+                    </Text>
+                    <PressableScale
+                      disabled={!canBuy}
+                      onPress={() => buy(item.id)}
+                      style={[styles.buyBtn, canBuy && styles.buyOn]}
+                    >
+                      {canBuy && (
+                        <LinearGradient
+                          colors={GRADIENTS.gold}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={[StyleSheet.absoluteFill, styles.buyRound]}
+                        />
+                      )}
                       <Text
-                        variant="subheading"
-                        color={afford ? COLORS.primary : COLORS.textMuted}
+                        variant="label"
+                        color={isOwned ? COLORS.positive : canBuy ? '#2A1A00' : COLORS.textMuted}
                       >
-                        {formatMoney(item.cost)}
+                        {isOwned ? 'OWNED' : locked ? 'LOCKED' : afford ? 'BUY' : 'TOO PRICEY'}
                       </Text>
-                      <Pressable
-                        disabled={isOwned || locked || !afford}
-                        onPress={() => buy(item.id)}
-                        style={[
-                          styles.buyBtn,
-                          {
-                            backgroundColor: isOwned
-                              ? COLORS.surface3
-                              : locked || !afford
-                                ? COLORS.surface2
-                                : COLORS.primary,
-                          },
-                        ]}
-                      >
-                        <Text
-                          variant="caption"
-                          weight="semibold"
-                          color={
-                            isOwned
-                              ? COLORS.primary
-                              : locked || !afford
-                                ? COLORS.textMuted
-                                : COLORS.bg
-                          }
-                        >
-                          {isOwned ? 'OWNED' : locked ? 'LOCKED' : 'BUY'}
-                        </Text>
-                      </Pressable>
-                    </View>
+                    </PressableScale>
                   </View>
-                </Card>
-              );
-            })}
+                );
+              })}
+            </Grid>
           </View>
         );
       })}
@@ -164,20 +177,35 @@ function verdictText(v: NonNullable<ReturnType<typeof purchaseLuxury>['verdict']
 }
 
 const styles = StyleSheet.create({
-  scoreRow: { marginBottom: SPACING.base },
-  walletRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  dismiss: { marginTop: SPACING.xs },
-  section: { marginTop: SPACING.lg, marginBottom: SPACING.sm },
-  itemRow: { flexDirection: 'row', gap: SPACING.base },
   flex: { flex: 1 },
-  meta: { marginTop: SPACING.xs },
-  buyCol: { alignItems: 'flex-end', gap: SPACING.sm, justifyContent: 'space-between' },
-  buyBtn: {
-    paddingHorizontal: SPACING.base,
-    paddingVertical: SPACING.sm,
-    borderRadius: RADIUS.sm,
+  score: { marginTop: SPACING.xs, marginBottom: SPACING.sm },
+  walletRow: { flexDirection: 'row' },
+  dismiss: { marginTop: SPACING.sm },
+  item: {
+    alignItems: 'center',
+    gap: 4,
+    paddingTop: SPACING.md + 2,
+    paddingBottom: SPACING.md,
+    paddingHorizontal: SPACING.sm + 2,
+    borderRadius: RADIUS.lg - 2,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderTopColor: 'rgba(255,255,255,0.13)',
   },
+  itemOwned: { borderColor: withAlpha(COLORS.positive, 0.4) },
+  itemName: { marginTop: SPACING.sm, fontSize: 14, lineHeight: 18, minHeight: 36 },
+  meta: { fontSize: 8.5, letterSpacing: 0.6 },
+  buyBtn: {
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    marginTop: SPACING.xs + 2,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.full,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  buyOn: { borderColor: 'transparent' },
+  buyRound: { borderRadius: RADIUS.full },
 });

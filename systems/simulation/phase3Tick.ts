@@ -5,7 +5,7 @@ import { useCareerStore } from '../../store/careerStore';
 import { usePressStore } from '../../store/pressStore';
 import { useRivalryStore } from '../../store/rivalryStore';
 import { useTourStore } from '../../store/tourStore';
-import { emptyBundle, resolveInfluences } from './influenceGraph';
+import { emptyBundle, note, resolveInfluences } from './influenceGraph';
 import { weeklyLabel } from '../industry/labelEngine';
 import { weeklyTour } from '../tour/tourEngine';
 import { weeklyRivalry } from '../rivalry/rivalryEngine';
@@ -15,6 +15,30 @@ import { weeklyMental } from '../mental/mentalEngine';
 import { maybeResurface } from '../history/historyEngine';
 import { weeklyCulture } from '../culture/cultureEngine';
 import { applyBundle } from './applyBundle';
+import { useMusicStore } from '../../store/musicStore';
+import { weeklyRoyalties } from '../music/royalties';
+import { weeklyMogul } from '../mogul/mogulActions';
+import { weeklyIdentity } from '../identity/identityTick';
+
+/** Streams pay: the artist's cut of every song's streams this week. */
+function applyRoyalties(bundle: InfluenceBundle, week: number): void {
+  const statement = weeklyRoyalties(useMusicStore.getState().discography);
+  if (statement.total <= 0) return;
+  bundle.moneyDelta += statement.total;
+  useCareerStore.getState().recordLedger({
+    week,
+    amount: statement.total,
+    kind: 'streaming',
+    note: `Royalties on ${statement.streams.toLocaleString('en-US')} streams`,
+  });
+  // Worth a line when a label is keeping most of it.
+  if (statement.withheld > statement.total * 2 && statement.withheld > 5_000) {
+    note(
+      bundle,
+      `Your songs earned $${(statement.total + statement.withheld).toLocaleString('en-US')} this week. You saw $${statement.total.toLocaleString('en-US')} of it.`
+    );
+  }
+}
 
 const SPAWN_PREFIX = 'spawn-controversy:';
 
@@ -82,11 +106,15 @@ export function runPhase3Week(week: number): Phase3WeekResult {
   //    current era / genre climate.
   weeklyCulture(bundle, week);
   weeklyLabel(bundle, week);
+  applyRoyalties(bundle, week);
+  weeklyMogul(bundle, week);
   weeklyTour(bundle, week);
   weeklyRivalry(bundle, week);
   weeklyPR(bundle, week);
   weeklyArc(bundle, week);
   maybeResurface(bundle, week);
+  // Who the artist is presses on their mind (traits), before the mental model runs.
+  weeklyIdentity(bundle);
 
   // 2. Markers raised this week become real controversies immediately.
   processControversyMarkers(bundle, week);

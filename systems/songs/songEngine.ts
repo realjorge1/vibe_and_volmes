@@ -82,7 +82,9 @@ function reactionsFor(
 export function produceAndRelease(
   player: Player,
   week: number,
-  draft: SongDraft
+  draft: SongDraft,
+  /** Who the artist is right now (traits, era, comeback): see systems/music/releaseHooks. */
+  boost: { streamsMult: number; criticsBonus: number } = { streamsMult: 1, criticsBonus: 0 }
 ): ProduceResult {
   const beat = getBeat(draft.beatId);
 
@@ -106,7 +108,9 @@ export function produceAndRelease(
     streamMultiplier:
       ROLLOUT_STREAM_MULT[draft.rollout] *
       (1 + (marketingScore / 100) * 0.8) *
-      (1 + (combo.reach / 100) * 0.6),
+      (1 + (combo.reach / 100) * 0.6) *
+      boost.streamsMult,
+    criticsBonus: boost.criticsBonus,
     chartFactors: {
       socialBuzz: clamp(ROLLOUT_BUZZ[draft.rollout] + combo.reach * 0.25, 0, 100),
       playlistSupport: clamp(

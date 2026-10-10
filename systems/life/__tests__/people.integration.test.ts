@@ -120,7 +120,11 @@ test('eight different interactions work, each writing to the Deck', () => {
     const r = withRandom(0, () => playerInteract(personId, id));
     if (r.ok) {
       worked.add(id);
-      const last = useGameStore.getState().lastWeekSummary.at(-1)!;
+      // The interaction's own line, newest of its kind (a fulfilled want may
+      // land right after it).
+      const last = [...useGameStore.getState().lastWeekSummary]
+        .reverse()
+        .find((e) => e.eventId.startsWith('story:person:'))!;
       assert.equal(last.eventId, `story:person:${id}`);
       assert.equal(last.flavorText, r.result.line);
     }

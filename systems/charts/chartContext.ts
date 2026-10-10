@@ -60,6 +60,7 @@ export function buildWeeklyChartContext(
   const reads = liveChartReads(stats);
   return {
     ...reads,
+    fans: stats.fans,
     buzzForTrack: (track: Track) =>
       track.id === latestTrackId ? clamp(latestBuzz, 0, 100) : 0,
   };

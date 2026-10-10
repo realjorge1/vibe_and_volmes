@@ -1,7 +1,8 @@
 import React from 'react';
 import { Pressable, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Text } from '../ui/Typography';
-import { COLORS, RADIUS, SPACING } from '../../constants/theme';
+import { COLORS, GRADIENTS, RADIUS, SPACING } from '../../constants/theme';
 
 /** Small selectable pill used across the creation pipeline. */
 export function Chip({
@@ -16,12 +17,20 @@ export function Chip({
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.chip, on ? styles.on : styles.off]}
+      style={({ pressed }) => [styles.chip, on ? styles.on : styles.off, pressed && styles.pressed]}
     >
+      {on && (
+        <LinearGradient
+          colors={GRADIENTS.primary}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[StyleSheet.absoluteFill, styles.round]}
+        />
+      )}
       <Text
         variant="caption"
-        color={on ? COLORS.bg : COLORS.textSecondary}
-        weight={on ? 'bold' : 'regular'}
+        color={on ? '#FFFFFF' : COLORS.textSecondary}
+        weight={on ? 'bold' : 'medium'}
       >
         {label}
       </Text>
@@ -36,6 +45,10 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.full,
     borderWidth: 1,
   },
-  on: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  off: { backgroundColor: COLORS.surface2, borderColor: COLORS.border },
+  round: { borderRadius: RADIUS.full },
+  on: {
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  off: { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: COLORS.border },
+  pressed: { transform: [{ scale: 0.95 }] },
 });

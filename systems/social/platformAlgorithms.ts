@@ -3,8 +3,9 @@ import type {
   PostSentiment,
   EngagementMetrics,
   FanSegment,
+  NpcAccount,
 } from '../../types/social';
-import { getReputationTier } from '../../utils/statHelpers';
+import { fameReach, getReputationTier } from '../../utils/statHelpers';
 import { SEGMENT_INTENSITY } from './fanbase';
 import { clamp } from '../../utils/random';
 
@@ -13,8 +14,8 @@ import { clamp } from '../../utils/random';
  *
  * Each platform surfaces and rewards content differently — the single most
  * requested deliverable. A controversy that buries a post on the lifestyle
- * grid (VibeSnap) is exactly what the discourse timeline (Chirp) boosts; the
- * short-video feed (HypeFeed) hands non-followers tens of millions of views
+ * grid (VibeGram) is exactly what the discourse timeline (Chirp) boosts; the
+ * short-video feed (TokTalk) hands non-followers tens of millions of views
  * the instant a clip aligns with a trend.
  *
  * `computeEngagement` is the one place the five-metric model is produced, so
@@ -53,7 +54,7 @@ export const PLATFORM_ALGORITHMS: Record<Platform, PlatformAlgorithm> = {
     viewMul: 7,
     rates: { like: 0.12, comment: 0.05, repost: 0.06, share: 0.02 },
   },
-  // VibeSnap — photo / lifestyle grid. Likes dominate, discourse is thin,
+  // VibeGram — photo / lifestyle grid. Likes dominate, discourse is thin,
   // aesthetics travel and scandal is comparatively muted.
   flashpic: {
     id: 'flashpic',
@@ -65,7 +66,7 @@ export const PLATFORM_ALGORITHMS: Record<Platform, PlatformAlgorithm> = {
     viewMul: 5,
     rates: { like: 0.22, comment: 0.025, repost: 0.012, share: 0.02 },
   },
-  // HypeFeed — short-video virality. Discovery is enormous (followers barely
+  // TokTalk — short-video virality. Discovery is enormous (followers barely
   // matter), trends decide everything, shares + views explode.
   tunetok: {
     id: 'tunetok',
@@ -77,7 +78,7 @@ export const PLATFORM_ALGORITHMS: Record<Platform, PlatformAlgorithm> = {
     viewMul: 34,
     rates: { like: 0.1, comment: 0.04, repost: 0.05, share: 0.075 },
   },
-  // PulseNews — industry/news. Authority-driven: huge readership, low likes,
+  // VibeNews — industry/news. Authority-driven: huge readership, low likes,
   // controversy = engagement, shares are "story passed along".
   vibestream: {
     id: 'vibestream',
@@ -186,7 +187,9 @@ export function computeEngagement(input: EngagementInput): EngagementMetrics {
     discoveryFactor *
     segLoud;
 
-  const views = Math.round(reach * algo.viewMul * jitter());
+  const views = Math.round(
+    reach * algo.viewMul * relevance(input.playerFans, input.followers) * jitter()
+  );
 
   // Reputation: a beloved artist converts views to likes; a cancelled one
   // converts them to comments/ratios instead.
@@ -222,6 +225,84 @@ export function computeEngagement(input: EngagementInput): EngagementMetrics {
     reposts: Math.max(0, reposts),
     shares: Math.max(0, shares),
     views: Math.max(0, views),
+  };
+}
+
+/**
+ * How much a post about the artist travels beyond people who already care.
+ * A small account's followers see it either way; a big page posting about an
+ * unknown gets scrolled past. 0.12 for a nobody on a huge page, 1 for a star.
+ */
+export function relevance(playerFans: number, followers: number): number {
+  const known = 0.12 + 0.88 * Math.pow(fameReach(playerFans), 1.5);
+  const circle = 2_000 / (2_000 + Math.max(0, followers));
+  return known + (1 - known) * circle;
+}
+
+/**
+ * How likely each kind of account is to post about the artist. Critics and
+ * blogs dig for new music and listeners pass it on, so they're the voices
+ * around an unknown; stans, gossip pages, news and rival fandoms arrive once
+ * there's a name to talk about.
+ */
+export function accountAttention(type: NpcAccount['accountType'], playerFans: number): number {
+  const r = fameReach(playerFans);
+  switch (type) {
+    case 'critic':
+      return 3.5;
+    case 'fan':
+      return 2;
+    case 'public':
+      return 1.5;
+    case 'industry':
+      return 0.2 + 1.8 * r * r;
+    case 'stan':
+      return 0.05 + 2.5 * r ** 3;
+    case 'gossip':
+    case 'news':
+      return 0.03 + 3 * r ** 4;
+    case 'rival-fan':
+      return 0.03 + 2 * r ** 4;
+    case 'hater':
+      // A few haters find anyone; the pile-on grows with the name.
+      return 0.15 + 2.2 * r ** 2;
+    case 'artist':
+      // Other artists only post about you when there's beef (the drama layer decides).
+      return 0;
+  }
+}
+
+/**
+ * The accounts in the order they'd pick up the artist: a shuffle weighted by
+ * `accountAttention` (each key is u^(1/w), highest first).
+ */
+export function byAttention(
+  pool: readonly NpcAccount[],
+  playerFans: number,
+  rng: () => number = Math.random
+): NpcAccount[] {
+  return pool
+    .map((a) => ({ a, k: Math.pow(rng(), 1 / accountAttention(a.accountType, playerFans)) }))
+    .sort((x, y) => y.k - x.k)
+    .map((x) => x.a);
+}
+
+/**
+ * An unknown's music is met by critics and the curious, not a fandom: tilt a
+ * feed's sentiment weights toward critical and neutral, away from hype and
+ * memes, fading out as the artist gets known. Returns a new record.
+ */
+export function withFameTone(
+  weights: Record<PostSentiment, number>,
+  playerFans: number
+): Record<PostSentiment, number> {
+  const fresh = 1 - fameReach(playerFans);
+  return {
+    ...weights,
+    critical: weights.critical + 8 * fresh,
+    neutral: weights.neutral + 5 * fresh,
+    hype: weights.hype * (1 - 0.6 * fresh),
+    meme: weights.meme * (1 - 0.6 * fresh),
   };
 }
 

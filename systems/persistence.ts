@@ -19,6 +19,13 @@ import { useCommunityStore } from '../store/communityStore';
 import { useWorldStore } from '../store/worldStore';
 import { useActivityStore } from '../store/activityStore';
 import { usePeopleStore } from '../store/peopleStore';
+import { useNotificationStore } from '../store/notificationStore';
+import { useDramaStore } from '../store/dramaStore';
+import { useIdentityStore } from '../store/identityStore';
+import { useCalendarStore } from '../store/calendarStore';
+import { useLegalStore } from '../store/legalStore';
+import { useMogulStore } from '../store/mogulStore';
+import { useShowStore } from '../store/showStore';
 
 /**
  * Every per-save store except the NPC world. Cheap enough to call after each
@@ -45,6 +52,13 @@ export function saveProgress(): void {
   useCommunityStore.getState().save();
   useActivityStore.getState().save();
   usePeopleStore.getState().save();
+  useNotificationStore.getState().save();
+  useDramaStore.getState().save();
+  useIdentityStore.getState().save();
+  useCalendarStore.getState().save();
+  useLegalStore.getState().save();
+  useMogulStore.getState().save();
+  useShowStore.getState().save();
   // Premium entitlements self-save on mutation (own table), like metaStore.
 }
 

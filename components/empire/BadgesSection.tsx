@@ -2,60 +2,70 @@ import { View, StyleSheet } from 'react-native';
 import { useProgressionStore } from '../../store/progressionStore';
 import { ACHIEVEMENTS } from '../../data/progression/achievements';
 import { Text } from '../ui/Typography';
-import { COLORS, RADIUS, SPACING } from '../../constants/theme';
+import { SectionTitle } from '../ui/SectionTitle';
+import { Grid } from '../ui/Grid';
+import { Tile3D } from '../fx/Tile3D';
+import { COLORS, SPACING } from '../../constants/theme';
 
-// Badge tiers → desaturated tokens (was loud bronze/silver/gold/red).
 const TIER_COLOR = {
-  bronze: COLORS.textMuted,
-  silver: COLORS.textSecondary,
+  bronze: '#E0915A',
+  silver: '#C9D3E6',
   gold: COLORS.gold,
-  legendary: COLORS.primary,
+  legendary: COLORS.secondary,
 } as const;
 
-/** Empire · Overview — achievements earned along the level ladder. */
+const TIER_ICON = {
+  bronze: 'medal',
+  silver: 'medal',
+  gold: 'trophy',
+  legendary: 'diamond',
+} as const;
+
+/** Empire · Overview — achievements earned along the level ladder, as a shelf of 3D medals. */
 export function BadgesSection() {
   const unlocked = useProgressionStore((s) => s.unlockedAchievements);
   return (
     <View>
-      <Text variant="heading" style={styles.section}>
-        Badges · {unlocked.length}/{ACHIEVEMENTS.length}
-      </Text>
-      <View style={styles.badgeWrap}>
+      <SectionTitle accent={COLORS.gold} meta={`${unlocked.length}/${ACHIEVEMENTS.length}`}>
+        Badges
+      </SectionTitle>
+      <Grid columns={3} gap={SPACING.md}>
         {ACHIEVEMENTS.map((a) => {
           const got = unlocked.includes(a.id);
           const hidden = a.secret && !got;
+          const color = TIER_COLOR[a.tier];
           return (
-            <View
-              key={a.id}
-              style={[styles.badge, { borderColor: got ? TIER_COLOR[a.tier] : COLORS.border }]}
-            >
+            <View key={a.id} style={[styles.badge, !got && styles.locked]}>
+              <Tile3D
+                icon={hidden ? 'help' : got ? TIER_ICON[a.tier] : 'lock-closed'}
+                color={color}
+                size={46}
+                dim={!got}
+              />
               <Text
                 variant="caption"
-                weight="semibold"
-                color={got ? TIER_COLOR[a.tier] : COLORS.textMuted}
+                weight="bold"
+                center
+                color={got ? color : COLORS.textMuted}
+                numberOfLines={1}
+                style={styles.name}
               >
                 {hidden ? '??? Secret' : a.name}
               </Text>
-              <Text variant="label" muted numberOfLines={2}>
+              <Text variant="caption" muted center numberOfLines={2} style={styles.desc}>
                 {hidden ? 'Keep playing to reveal.' : a.description}
               </Text>
             </View>
           );
         })}
-      </View>
+      </Grid>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  section: { marginTop: SPACING.lg, marginBottom: SPACING.sm },
-  badgeWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm },
-  badge: {
-    width: '47%',
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    padding: SPACING.md,
-    gap: 2,
-  },
+  badge: { alignItems: 'center', gap: 3, paddingVertical: SPACING.xs },
+  locked: { opacity: 0.7 },
+  name: { marginTop: SPACING.sm, fontSize: 12 },
+  desc: { fontSize: 10.5, lineHeight: 13 },
 });

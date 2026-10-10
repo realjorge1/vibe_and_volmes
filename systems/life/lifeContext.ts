@@ -15,6 +15,8 @@ import { ownedItems } from './assetEngine';
 import { usePeopleStore } from '../../store/peopleStore';
 import { partnerOf } from './peopleEngine';
 import { shuffle } from '../../utils/random';
+import { useLegalStore } from '../../store/legalStore';
+import { traitEffects } from '../identity/traits';
 
 /**
  * Store reads for the Life systems, kept out of the pure engines. Everything
@@ -123,6 +125,7 @@ export function buildActivityContext(): ActivityContext | null {
   const level = useProgressionStore.getState().level;
   const activities = useActivityStore.getState();
   const tally = activities.weekTally(game.week);
+  const fx = traitEffects();
   return {
     week: game.week,
     age: ageAtWeek(player.startAge, game.week),
@@ -136,5 +139,9 @@ export function buildActivityContext(): ActivityContext | null {
     doneThisWeek: tally.done,
     earnedThisWeek: tally.earned,
     lastDone: activities.lastDone,
+    inJail: useLegalStore.getState().activeCase?.stage === 'jailed',
+    activityTilt: fx.activityTilt,
+    extraActivities: fx.extraActivities,
+    arrestRisk: fx.arrestRisk,
   };
 }

@@ -5,6 +5,7 @@ import { buildContextCapsule, capsuleSignature } from '../memory/capsule';
 import { requestGeneration } from '../gateway';
 import { useSocialStore } from '../../store/socialStore';
 import { useGameStore } from '../../store/gameStore';
+import { reusable } from '../../systems/social/protect';
 
 /**
  * HYBRID social media. `feedGenerator` already produced the full template
@@ -55,7 +56,9 @@ function mode<T>(items: T[]): T | undefined {
 
 /** Pick the posts most worth upgrading: dramatic sentiment + event-linked. */
 function selectTargets(posts: SocialPost[]): SocialPost[] {
-  return [...posts]
+  // Never rewrite a post with the player's real photo, or one that isn't about the player.
+  return posts
+    .filter((p) => reusable(p) && !p.lane)
     .map((p) => ({
       p,
       w:

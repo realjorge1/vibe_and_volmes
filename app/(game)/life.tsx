@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { Screen } from '../../components/ui/Screen';
-import { Text } from '../../components/ui/Typography';
+import { ScreenHeader } from '../../components/ui/ScreenHeader';
+import { Orb3D } from '../../components/fx/Orb3D';
 import {
   SegmentedControl,
   type Segment,
@@ -29,9 +30,13 @@ export default function Life() {
 
   return (
     <Screen scroll>
-      <Text variant="title" style={styles.title}>
-        Life
-      </Text>
+      <ScreenHeader
+        eyebrow="YOUR LIFE"
+        title="Life"
+        subtitle="What you do, who you love, what you own."
+        accent={'#FF7EBD'}
+        right={<Orb3D size={52} color={'#FF7EBD'} icon="heart" />}
+      />
       <SegmentedControl
         segments={SEGMENTS}
         value={tab}
@@ -46,6 +51,5 @@ export default function Life() {
 }
 
 const styles = StyleSheet.create({
-  title: { marginTop: SPACING.base, marginBottom: SPACING.md },
   segment: { marginBottom: SPACING.lg },
 });

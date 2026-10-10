@@ -85,7 +85,13 @@ export interface HeirSource {
   legacyTier: LegacyTier;
   ending: EndingId;
   died: boolean;
+  /** What the songs the artist owns pay each week: the estate's catalog. */
+  catalogWeekly?: number;
 }
+
+/** Weeks of catalog royalties the estate passes on (the masters keep paying). */
+export const HEIR_CATALOG_WEEKS = 26;
+export const HEIR_CATALOG_CAP = 500_000;
 
 /**
  * What the next career inherits. The child starts at their own age (at
@@ -137,7 +143,10 @@ export function buildHeir(src: HeirSource): HeirInheritance {
     startAge: Math.max(MIN_START_AGE, childAge(child, src.week)),
     city: player.city,
     genre: player.genre,
-    money: Math.min(HEIR_MONEY_CAP, Math.round(player.money * HEIR_MONEY_SHARE)),
+    // Part of the money, plus the catalog: the songs they owned keep paying.
+    money:
+      Math.min(HEIR_MONEY_CAP, Math.round(player.money * HEIR_MONEY_SHARE)) +
+      Math.min(HEIR_CATALOG_CAP, Math.round((src.catalogWeekly ?? 0) * HEIR_CATALOG_WEEKS)),
     fans: Math.min(HEIR_FANS_CAP, Math.round(src.peakFans * HEIR_FANS_SHARE)),
     rivalIds: src.rivalIds,
     bloodlineId: bloodlineFor(src.identity),

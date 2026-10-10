@@ -84,6 +84,8 @@ export interface TourStop {
   revenue: number;
   performanceScore: number;   // 0-100 quality of the night
   incidentId: string | null;  // tour incident that fired here, if any
+  /** Set when the artist played the show themselves (the live show screen). */
+  liveScore?: number | null;
 }
 
 export interface Tour {
@@ -259,7 +261,10 @@ export type IncomeKind =
   | 'sponsorship'
   | 'advance'
   | 'merch'
-  | 'feature';
+  | 'feature'
+  | 'label'
+  | 'venture'
+  | 'shows';
 
 export type ExpenseKind =
   | 'lifestyle'
@@ -269,7 +274,10 @@ export type ExpenseKind =
   | 'legal'
   | 'label-recoup'
   | 'tour-cost'
-  | 'upkeep';
+  | 'upkeep'
+  | 'masters'
+  | 'signing'
+  | 'fines';
 
 export interface LedgerEntry {
   week: number;
@@ -299,7 +307,16 @@ export type HistoryKind =
   | 'betrayal'
   | 'contract'
   | 'award'
-  | 'statement';
+  | 'statement'
+  // Drama layer: moments the Chronicle keeps.
+  | 'charity'
+  | 'romance'
+  | 'viral'
+  | 'embarrassment'
+  // The bigger story: courtrooms, dreams, businesses.
+  | 'legal'
+  | 'dream'
+  | 'business';
 
 export interface HistoryRecord {
   id: string;

@@ -29,6 +29,57 @@ export interface Track {
   marketingSeed?: number;
   /** Combined reach of featured collaborators, 0-100. */
   collabReach?: number;
+  // ─── Release momentum (slow-burn releases) ────────────────────────────────
+  // Optional: legacy tracks omit it and keep the old front-loaded decay.
+  /** How the song builds and fades after release. See systems/music/releaseCurve. */
+  momentum?: ReleaseMomentum;
+  /** Fans this song has won so far, release week included. */
+  fansEarned?: number;
+  /** Critics' score at release, 0-100. */
+  criticsScore?: number;
+  // ─── Masters & royalties ──────────────────────────────────────────────────
+  // Optional: songs from before masters existed are the artist's own.
+  /** Who owns the recording: the artist, the label that released it, or a buyer. */
+  owner?: 'artist' | 'label' | 'vault';
+  /** The label the song was released under, when label-owned. */
+  ownerLabelId?: string;
+  /** Share of the song's streaming revenue the artist keeps, 0..1. */
+  royaltyShare?: number;
+  /** "(Your Version)": the id of the song this re-records. */
+  rerecordOf?: string;
+  /** Set on a song once the artist has re-recorded it. */
+  rerecorded?: boolean;
+  // ─── Story stamps ─────────────────────────────────────────────────────────
+  /** Comes back every holiday season. */
+  seasonal?: 'holiday';
+  /** The era it was released in. */
+  eraId?: string;
+  /** Released as a comeback record. */
+  comeback?: boolean;
+  /** Recorded in a cell. */
+  jailTape?: boolean;
+  /** Samples a past life's hit (the title). */
+  sampleOf?: string;
+}
+
+/**
+ * A song's life after release. An unknown artist's song opens small and grows
+ * by word of mouth; a superstar's opens near its peak. Fixed at release except
+ * `audienceFans` (re-sized every week) and the breakout fields.
+ */
+export interface ReleaseMomentum {
+  /** Weekly streams multiplier while the song is still building. */
+  growth: number;
+  /** Weeks after release the song keeps building before it starts to fade. */
+  buildWeeks: number;
+  /** Weekly streams multiplier once it has peaked. */
+  fade: number;
+  /** Fans won per stream. */
+  fansPerStream: number;
+  /** The fan count the song's audience was last sized against. */
+  audienceFans: number;
+  /** Chance per building week that the song breaks out (goes viral late). */
+  breakoutChance: number;
 }
 
 export interface ChartEntry {

@@ -93,6 +93,37 @@ export interface HeirInheritance {
   family: HeirFamilyMember[];
 }
 
+/**
+ * A life that ended, still alive in the world of the lives after it: their
+ * songs are on the radio, their name is in the comparisons, and when they
+ * are gone, their estate still releases music.
+ */
+export interface PastLife {
+  id: string;
+  artistName: string;
+  genre: MusicGenre;
+  gender: Gender;
+  city: string;
+  identity: IdentityLabel;
+  identityTitle: string;
+  legacyTier: LegacyTier;
+  ending: EndingId;
+  died: boolean;
+  ageAtEnd: number;
+  peakFans: number;
+  /** Their biggest songs, best first. */
+  hits: { title: string; peak: number | null }[];
+  generation: number;
+  endedAt: number;
+}
+
+/** A challenge finished in some life. */
+export interface ChallengeRecord {
+  id: string;
+  artistName: string;
+  completedAt: number;
+}
+
 export interface MetaProfile {
   /** Accumulated across every retired career — the unlock currency. */
   lifetimeLegacy: number;
@@ -109,4 +140,10 @@ export interface MetaProfile {
   identitiesEarned: Partial<Record<IdentityLabel, number>>;
   /** Set when the last career chose to continue as a child. */
   pendingHeir: HeirInheritance | null;
+  /** Every finished life, newest first: they live on in the next world. */
+  pastLives: PastLife[];
+  /** Challenges completed across lives. */
+  challengesCompleted: ChallengeRecord[];
+  /** Dreams that came true, across lives (by dream id → count). */
+  dreamsEarned: Partial<Record<string, number>>;
 }

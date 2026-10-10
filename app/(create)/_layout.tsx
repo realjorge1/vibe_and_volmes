@@ -1,5 +1,5 @@
 import { Stack } from 'expo-router';
-import { COLORS } from '../../constants/theme';
+import { ANIMATIONS_ENABLED, COLORS } from '../../constants/theme';
 
 /**
  * The song creation pipeline as its own stack, pushed over the tabs:
@@ -12,7 +12,7 @@ export default function CreateLayout() {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: COLORS.bg },
-        animation: 'slide_from_right',
+        animation: ANIMATIONS_ENABLED ? 'slide_from_right' : 'none',
         gestureEnabled: false,
       }}
     />

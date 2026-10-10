@@ -1,7 +1,7 @@
 import type { EventConsequence } from '../../types/events';
 import type { PlayerStats } from '../../types/player';
 import type { StoryBeat } from '../../types/social';
-import type { ActivityOutcome, LifeActivity } from '../../types/life';
+import type { ActivityCategory, ActivityOutcome, LifeActivity } from '../../types/life';
 import { CAREER_STAGES, type CareerStageId } from '../../constants/careerStages';
 import {
   ACTIVITIES_PER_WEEK,
@@ -31,6 +31,20 @@ export interface ActivityContext {
   earnedThisWeek: number;
   /** activityId → week it was last done. */
   lastDone: Record<string, number>;
+  // ─── Who the artist is, and where (optional: older callers omit them) ───
+  /** Locked up: only `jail` activities exist. */
+  inJail?: boolean;
+  /** Trait tilt per category, in skill points. */
+  activityTilt?: Partial<Record<ActivityCategory, number>>;
+  /** Extra activities a week (a Workaholic). */
+  extraActivities?: number;
+  /** Multiplier on outcomes that end in a charge (a Hothead). */
+  arrestRisk?: number;
+}
+
+/** Activities per week for this artist. */
+export function activitiesPerWeek(ctx: Pick<ActivityContext, 'extraActivities'>): number {
+  return ACTIVITIES_PER_WEEK + (ctx.extraActivities ?? 0);
 }
 
 export type Availability =
@@ -53,6 +67,8 @@ export function activityAvailability(
 ): Availability {
   const g = activity.gates ?? {};
   const locked = (reason: string): Availability => ({ ok: false, locked: true, reason });
+  if (activity.category === 'jail' && !ctx.inJail) return locked('Only inside');
+  if (activity.category !== 'jail' && ctx.inJail) return locked('Not from in here');
   if (g.minAge !== undefined && ctx.age < g.minAge) return locked(`Age ${g.minAge}+`);
   if (g.maxAge !== undefined && ctx.age > g.maxAge) return locked(`Under ${g.maxAge + 1} only`);
   if (g.minStage && stageIndex(ctx.careerStage) < stageIndex(g.minStage)) {
@@ -68,7 +84,7 @@ export function activityAvailability(
   if (g.single && ctx.hasPartner) return locked('You are seeing someone');
 
   const busy = (reason: string): Availability => ({ ok: false, locked: false, reason });
-  if (ctx.doneThisWeek >= ACTIVITIES_PER_WEEK) return busy('No time left this week');
+  if (ctx.doneThisWeek >= activitiesPerWeek(ctx)) return busy('No time left this week');
   const last = ctx.lastDone[activity.id];
   if (activity.cooldownWeeks && last !== undefined) {
     const wait = last + activity.cooldownWeeks - ctx.week;
@@ -88,20 +104,37 @@ export function activityAvailability(
 export function effectiveWeight(
   outcome: ActivityOutcome,
   activity: LifeActivity,
-  stats: PlayerStats
+  stats: PlayerStats,
+  mods: OutcomeMods = {}
 ): number {
-  if (!activity.skill || !outcome.luck) return outcome.weight;
-  const s = Math.max(0, Math.min(100, stats[activity.skill] as number)) / 100;
-  const tilt = outcome.luck === 'good' ? 0.4 + 1.2 * s : 1.6 - 1.2 * s;
-  return outcome.weight * tilt;
+  let w = outcome.weight;
+  if (activity.skill && outcome.luck) {
+    const s = Math.max(0, Math.min(100, stats[activity.skill] as number)) / 100;
+    w *= outcome.luck === 'good' ? 0.4 + 1.2 * s : 1.6 - 1.2 * s;
+  }
+  // A personality that suits the activity tilts luck its way.
+  const tilt = mods.tilt ?? 0;
+  if (tilt && outcome.luck) {
+    w *= Math.max(0.2, outcome.luck === 'good' ? 1 + tilt / 100 : 1 - tilt / 100);
+  }
+  if (outcome.consequences.legalCharge) w *= mods.arrestRisk ?? 1;
+  return w;
+}
+
+/** Who the artist is, as it bends an activity's luck. */
+export interface OutcomeMods {
+  /** Skill points from traits for this activity's category. */
+  tilt?: number;
+  arrestRisk?: number;
 }
 
 export function pickOutcome(
   activity: LifeActivity,
   stats: PlayerStats,
-  rng: () => number = Math.random
+  rng: () => number = Math.random,
+  mods: OutcomeMods = {}
 ): ActivityOutcome {
-  const weights = activity.outcomes.map((o) => effectiveWeight(o, activity, stats));
+  const weights = activity.outcomes.map((o) => effectiveWeight(o, activity, stats, mods));
   const total = weights.reduce((a, b) => a + b, 0);
   let roll = rng() * total;
   for (let i = 0; i < activity.outcomes.length; i++) {
@@ -148,7 +181,10 @@ export function resolveActivity(
   tokens: Tokens,
   rng: () => number = Math.random
 ): ActivityResult {
-  const outcome = pickOutcome(activity, ctx.stats, rng);
+  const outcome = pickOutcome(activity, ctx.stats, rng, {
+    tilt: ctx.activityTilt?.[activity.category],
+    arrestRisk: ctx.arrestRisk,
+  });
   const c = outcome.consequences;
 
   const gross = c.moneyDelta ?? 0;
@@ -164,6 +200,13 @@ export function resolveActivity(
     historyRecord: c.historyRecord && {
       ...c.historyRecord,
       summary: fillTokens(c.historyRecord.summary, tokens),
+    },
+    // A seed about whoever `{npc}` was tonight (their world id is bound by
+    // the action layer, which knows who they are).
+    plantSeed: c.plantSeed && {
+      ...c.plantSeed,
+      note: fillTokens(c.plantSeed.note, tokens),
+      name: c.plantSeed.who === 'npc' || c.plantSeed.who === 'rival' ? tokens.npc : c.plantSeed.name,
     },
   };
 

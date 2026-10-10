@@ -5,6 +5,8 @@ import { Screen } from '../components/ui/Screen';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Text } from '../components/ui/Typography';
+import { ScreenHeader } from '../components/ui/ScreenHeader';
+import { Orb3D } from '../components/fx/Orb3D';
 import { COLORS, SPACING } from '../constants/theme';
 import { usePlayerStore } from '../store/playerStore';
 import { useGameStore } from '../store/gameStore';
@@ -106,10 +108,13 @@ export default function ChronicleModal() {
   );
 
   return (
-    <Screen scroll>
-      <Text variant="title" style={styles.title}>
-        {dossier.artistName}
-      </Text>
+    <Screen scroll tint={COLORS.gold}>
+      <ScreenHeader
+        eyebrow="THE CHRONICLE"
+        title={dossier.artistName}
+        accent={COLORS.gold}
+        right={<Orb3D size={52} color={COLORS.gold} icon="book" />}
+      />
       <Text variant="caption" muted style={styles.meta}>
         {dossier.identity.title} · {dossier.identity.confidence}% certain
       </Text>
@@ -292,7 +297,6 @@ export default function ChronicleModal() {
 }
 
 const styles = StyleSheet.create({
-  title: { marginVertical: SPACING.sm },
   meta: { marginBottom: SPACING.md },
   gap: { marginTop: SPACING.sm },
   section: { marginTop: SPACING.lg, marginBottom: SPACING.md },

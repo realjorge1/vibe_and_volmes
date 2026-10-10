@@ -1,66 +1,78 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   View,
   ScrollView,
-  Pressable,
   StyleSheet,
   type LayoutChangeEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { usePlayerStore } from '../../store/playerStore';
 import { useGameStore } from '../../store/gameStore';
 import { useLabelStore } from '../../store/labelStore';
 import { usePressStore } from '../../store/pressStore';
-import { usePlanStore } from '../../store/planStore';
-import { getActivity } from '../../data/passive/activities';
 import { useCareerFeed } from '../../hooks/useCareerFeed';
 import { useWeekEngine } from '../../hooks/useWeekEngine';
 import { Card } from '../../components/ui/Card';
-import { Divider } from '../../components/ui/Divider';
+import { Grid } from '../../components/ui/Grid';
+import { RuleLabel } from '../../components/ui/RuleLabel';
 import { Text } from '../../components/ui/Typography';
+import { PressableScale } from '../../components/ui/PressableScale';
+import { DeckHeader } from '../../components/home/DeckHeader';
 import { FameDisplay } from '../../components/home/FameDisplay';
 import { QuickStats } from '../../components/home/QuickStats';
 import { LevelBadge } from '../../components/progression/LevelBadge';
-import { EnergyMeter } from '../../components/home/EnergyMeter';
 import { WeekRule } from '../../components/home/WeekRule';
 import { LogLine } from '../../components/home/LogLine';
 import { AdvanceBar } from '../../components/home/AdvanceBar';
 import { InlineEventCard } from '../../components/events/InlineEventCard';
 import { ResolvedEventCard } from '../../components/events/ResolvedEventCard';
-import { formatWeek } from '../../utils/formatters';
+import { Orb3D } from '../../components/fx/Orb3D';
+import { Tile3D } from '../../components/fx/Tile3D';
+import { WeekTransition } from '../../components/fx/WeekTransition';
 import { ageAtWeek } from '../../systems/life/age';
-import { formatFanCount, formatMoney } from '../../utils/statHelpers';
-import { COLORS, SPACING, RADIUS } from '../../constants/theme';
+import { ANIMATIONS_ENABLED, COLORS, SPACING, ifAnimated } from '../../constants/theme';
+import { useIdentityStore } from '../../store/identityStore';
+import { useCalendarStore } from '../../store/calendarStore';
+import { useLegalStore } from '../../store/legalStore';
+import { useTourStore } from '../../store/tourStore';
+import { useShowStore } from '../../store/showStore';
+import { WantsStrip } from '../../components/identity/WantsStrip';
+import { showsTonight } from '../../systems/show/showActions';
+import { awardNightTonight } from '../../systems/calendar/calendarTick';
+import { slotLabel } from '../../systems/calendar/festivalEngine';
+import { formatMoney } from '../../utils/formatters';
 
 interface Alert {
   id: string;
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: string;
   tone: string;
   title: string;
   sub: string;
   onPress: () => void;
 }
 
-function HeaderStat({
-  label,
-  value,
+/** A quick-launch key: a 3D icon over its name, centered in its column. */
+function Shortcut({
+  icon,
   color,
+  label,
+  onPress,
 }: {
+  icon: string;
+  color: string;
   label: string;
-  value: string;
-  color?: string;
+  onPress: () => void;
 }) {
   return (
-    <View>
-      <Text variant="label" color={COLORS.textMuted}>
+    <PressableScale onPress={onPress} scaleTo={0.92} style={styles.shortcut}>
+      <Tile3D icon={icon} color={color} size={50} />
+      <Text variant="caption" weight="semibold" color={COLORS.textSecondary} numberOfLines={1}>
         {label}
       </Text>
-      <Text variant="subheading" color={color} style={styles.headerStatValue}>
-        {value}
-      </Text>
-    </View>
+    </PressableScale>
   );
 }
 
@@ -82,12 +94,23 @@ export default function Deck() {
   const contract = useLabelStore((s) => s.contract);
   const pendingInterview = usePressStore((s) => s.pendingInterview);
   const controversies = usePressStore((s) => s.controversies);
-  const plan = usePlanStore((s) => s.plan);
+  const wants = useIdentityStore((s) => s.wants);
+  const dreamOffer = useIdentityStore((s) => s.dreamOffer);
+  const chartDay = useCalendarStore((s) => s.chartDay);
+  const wrapped = useCalendarStore((s) => s.wrapped);
+  const festival = useCalendarStore((s) => s.festival);
+  const awards = useCalendarStore((s) => s.awards);
+  const legalCase = useLegalStore((s) => s.activeCase);
+  // Re-render when a show becomes (or stops being) tonight's.
+  useTourStore((s) => s.activeTour);
+  useShowStore((s) => s.gig);
 
   const { items, truncated, pendingCount, eventsThisWeek, eventNumber } =
     useCareerFeed();
   const { availableChoices, lockedChoices, choose, finishWeek } =
     useWeekEngine();
+
+  const [turn, setTurn] = useState<{ week: number; subtitle?: string } | null>(null);
 
   const scrollRef = useRef<ScrollView>(null);
   /**
@@ -99,9 +122,10 @@ export default function Deck() {
   const wantScroll = useRef(true);
   const didFirstScroll = useRef(false);
 
-  const scrollToAnchor = useCallback((animated: boolean) => {
+  const scrollToAnchor = useCallback((smooth: boolean) => {
     const sv = scrollRef.current;
     if (!sv) return;
+    const animated = smooth && ANIMATIONS_ENABLED;
     if (anchorY.current > 0) {
       sv.scrollTo({ y: Math.max(0, anchorY.current - SPACING.base), animated });
     } else {
@@ -139,23 +163,121 @@ export default function Deck() {
   );
 
   const onAdvance = useCallback(() => {
+    const p = usePlayerStore.getState().player;
+    const before = p ? ageAtWeek(p.startAge, week) : 0;
+    const after = p ? ageAtWeek(p.startAge, week + 1) : 0;
     finishWeek();
     wantScroll.current = true;
-  }, [finishWeek]);
+    // The week-turn overlay is nothing but animation.
+    if (ANIMATIONS_ENABLED) setTurn({
+      week: week + 1,
+      subtitle: after > before ? `Happy birthday · you're ${after}` : undefined,
+    });
+  }, [finishWeek, week]);
 
   if (!player) return null;
-
-  const planSummary =
-    plan.slots
-      .map((id) => getActivity(id)?.label)
-      .filter(Boolean)
-      .join(' · ') || 'No routine set';
 
   const activeControversies = controversies.filter((c) => !c.resolved);
 
   // Decisions that live outside the week's event slate. The week's own
   // events are no longer listed here — they are in the column itself.
   const alerts: Alert[] = [];
+  if (legalCase?.stage === 'jailed' && legalCase.releaseWeek !== null && legalCase.jailStartWeek !== null) {
+    const total = legalCase.releaseWeek - legalCase.jailStartWeek;
+    const served = Math.min(total, week - legalCase.jailStartWeek + 1);
+    alerts.push({
+      id: 'jail',
+      icon: 'lock-closed',
+      tone: COLORS.negative,
+      title: `Locked up · month ${served} of ${total}`,
+      sub: 'Life · Inside is all there is to do now.',
+      onPress: () => router.push('/(game)/life'),
+    });
+  } else if (legalCase?.stage === 'fugitive') {
+    alerts.push({
+      id: 'fugitive',
+      icon: 'walk',
+      tone: COLORS.negative,
+      title: 'On the run',
+      sub: 'Every week, they might find you.',
+      onPress: () => router.push('/(game)/life'),
+    });
+  }
+  for (const show of showsTonight()) {
+    alerts.push({
+      id: `show-${show.key}`,
+      icon: 'mic',
+      tone: COLORS.accent,
+      title: `Tonight: ${show.name}`,
+      sub: `${show.city} · ${show.crowd.toLocaleString('en-US')} people · build your set`,
+      onPress: () => router.push({ pathname: '/show-modal', params: { key: show.key } }),
+    });
+  }
+  if (awards && !awards.resolved && awardNightTonight()) {
+    const mine = awards.nominations.filter((n) => n.nominees.some((x) => x.isPlayer)).length;
+    alerts.push({
+      id: 'awards-night',
+      icon: 'trophy',
+      tone: COLORS.gold,
+      title: `${awards.show} is tonight`,
+      sub: `${mine} nomination${mine === 1 ? '' : 's'}. Get dressed.`,
+      onPress: () => router.push('/awards-modal'),
+    });
+  } else if (awards && !awards.resolved && awards.nominations.some((n) => n.nominees.some((x) => x.isPlayer))) {
+    alerts.push({
+      id: 'awards-campaign',
+      icon: 'ribbon',
+      tone: COLORS.gold,
+      title: `Nominated at ${awards.show}`,
+      sub: 'Run a campaign before award night.',
+      onPress: () => router.push('/awards-modal'),
+    });
+  }
+  if (festival && festival.slot && festival.accepted === null) {
+    alerts.push({
+      id: 'lineup',
+      icon: 'sunny',
+      tone: '#FF8A3D',
+      title: `${festival.name} wants you`,
+      sub: `${slotLabel(festival.slot)} · ${formatMoney(festival.fee)} · answer before the weekend`,
+      onPress: () => router.push('/lineup-modal'),
+    });
+  }
+  if (chartDay && !chartDay.seen) {
+    alerts.push({
+      id: 'chart-day',
+      icon: 'stats-chart',
+      tone: COLORS.primary,
+      title: 'Chart day',
+      sub:
+        chartDay.beat === 'number-one' || chartDay.beat === 'top-10'
+          ? 'Something big happened. See where you landed.'
+          : chartDay.beat === 'fall'
+            ? 'Not every week goes up. See where you landed.'
+            : 'Your songs moved. See where you landed.',
+      onPress: () => router.push('/chart-modal'),
+    });
+  }
+  if (wrapped && !wrapped.seen) {
+    alerts.push({
+      id: 'wrapped',
+      icon: 'gift',
+      tone: COLORS.secondary,
+      title: `Your Year ${wrapped.year} Wrapped`,
+      sub: 'Your year in music is ready.',
+      onPress: () => router.push('/wrapped-modal'),
+    });
+  }
+  if (dreamOffer) {
+    alerts.push({
+      id: 'dream',
+      icon: 'star',
+      tone: COLORS.gold,
+      title: 'Choose your dream',
+      sub: 'One big thing for this stretch of your life.',
+      onPress: () => router.push('/you-modal'),
+    });
+  }
   if (pendingInterview) {
     alerts.push({
       id: 'interview',
@@ -190,40 +312,14 @@ export default function Deck() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       {/* Vitals stay put while the career scrolls beneath them. */}
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <View style={styles.flexShrink}>
-            <Text variant="label" color={COLORS.primary}>
-              {`${formatWeek(week).toUpperCase()} · AGE ${ageAtWeek(player.startAge, week)}`}
-            </Text>
-            <Text variant="heading" numberOfLines={1} style={styles.artist}>
-              {player.artistName}
-            </Text>
-          </View>
-          <Pressable
-            onPress={() => router.push('/stats-modal')}
-            style={styles.iconBtn}
-          >
-            <Ionicons
-              name="options-outline"
-              size={20}
-              color={COLORS.textSecondary}
-            />
-          </Pressable>
-        </View>
-        <View style={styles.headerStats}>
-          <HeaderStat label="FANS" value={formatFanCount(player.stats.fans)} />
-          <HeaderStat
-            label="CASH"
-            value={formatMoney(player.money)}
-            color={COLORS.primary}
-          />
-          <HeaderStat
-            label="ENERGY"
-            value={`${Math.round(player.stats.energy)}%`}
-          />
-        </View>
-      </View>
+      <DeckHeader
+        player={player}
+        week={week}
+        age={ageAtWeek(player.startAge, week)}
+        onPressAvatar={() => router.push('/(game)/empire')}
+        onPressSettings={() => router.push('/stats-modal')}
+      />
+      <WantsStrip wants={wants} week={week} onPress={() => router.push('/you-modal')} />
 
       <ScrollView
         ref={scrollRef}
@@ -232,14 +328,16 @@ export default function Deck() {
         showsVerticalScrollIndicator={false}
       >
         {truncated && (
-          <Pressable
+          <PressableScale
             onPress={() => router.push('/chronicle-modal')}
             style={styles.earlier}
           >
-            <Text variant="caption" color={COLORS.textMuted}>
-              Earlier career in the Chronicle →
+            <Ionicons name="book" size={13} color={COLORS.primary} />
+            <Text variant="caption" color={COLORS.textSecondary}>
+              Earlier career in the Chronicle
             </Text>
-          </Pressable>
+            <Ionicons name="arrow-forward" size={13} color={COLORS.textMuted} />
+          </PressableScale>
         )}
 
         {items.map((item) => {
@@ -282,109 +380,65 @@ export default function Deck() {
         })}
 
         {pendingCount === 0 && (
-          <View onLayout={handleAnchorLayout} style={styles.handled}>
-            <Text variant="label" color={COLORS.positive}>
+          <Animated.View
+            entering={ifAnimated(FadeIn.duration(500))}
+            onLayout={handleAnchorLayout}
+            style={styles.handled}
+          >
+            <Orb3D size={46} color={COLORS.positive} icon="checkmark" />
+            <Text variant="label" color={COLORS.positive} style={styles.handledTitle}>
               WEEK HANDLED
             </Text>
-            <Text variant="caption" muted style={styles.handledSub}>
+            <Text variant="caption" muted center>
               Nothing left to decide. Time moves when you&apos;re ready.
             </Text>
-          </View>
+          </Animated.View>
         )}
 
         {alerts.length > 0 && (
-          <Card accent={COLORS.primary} style={styles.block}>
-            <Text variant="label" muted>
-              NEEDS YOU
-            </Text>
+          <Card accent={COLORS.negative} style={styles.block}>
+            <View style={styles.alertHead}>
+              <View style={styles.pulseDot} />
+              <Text variant="label" color={COLORS.text}>
+                NEEDS YOU
+              </Text>
+            </View>
             {alerts.map((a, i) => (
-              <Pressable key={a.id} onPress={a.onPress}>
-                <View style={[styles.alertRow, i > 0 && styles.alertRowGap]}>
-                  <View style={[styles.alertDot, { backgroundColor: a.tone }]}>
-                    <Ionicons name={a.icon} size={14} color={COLORS.bg} />
-                  </View>
-                  <View style={styles.flex}>
-                    <Text variant="subheading">{a.title}</Text>
-                    <Text variant="caption" muted>
-                      {a.sub}
-                    </Text>
-                  </View>
-                  <Ionicons
-                    name="chevron-forward"
-                    size={16}
-                    color={COLORS.textMuted}
-                  />
+              <PressableScale key={a.id} onPress={a.onPress} style={[styles.alertRow, i > 0 && styles.alertRowGap]}>
+                <Tile3D icon={a.icon} color={a.tone} size={36} />
+                <View style={styles.flex}>
+                  <Text variant="subheading">{a.title}</Text>
+                  <Text variant="caption" muted>
+                    {a.sub}
+                  </Text>
                 </View>
-              </Pressable>
+                <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
+              </PressableScale>
             ))}
           </Card>
         )}
 
-        <Divider spacing={SPACING.lg} />
-
         {/* Opt-in depth — the dashboard sits under the log, never over it. */}
-        <View style={styles.block}>
-          <FameDisplay
-            fans={player.stats.fans}
-            reputation={player.stats.reputation}
-          />
+        <RuleLabel>YOUR CAREER</RuleLabel>
+        <LevelBadge onPress={() => router.push('/(game)/empire')} />
+        <View style={styles.bare}>
+          <FameDisplay fans={player.stats.fans} reputation={player.stats.reputation} />
         </View>
-        <View style={styles.block}>
-          <LevelBadge onPress={() => router.push('/(game)/empire')} />
+        <View style={styles.bare}>
+          <QuickStats stats={player.stats} />
         </View>
-        <View style={styles.block}>
-          <EnergyMeter />
-        </View>
-
-        <Card
-          accent={COLORS.primary}
-          onPress={() => router.push('/plan-modal')}
-          style={styles.block}
-        >
-          <View style={styles.planRow}>
-            <View style={styles.planIcon}>
-              <Ionicons name="calendar-outline" size={18} color={COLORS.bg} />
-            </View>
-            <View style={styles.flex}>
-              <Text variant="subheading">Daily Plan</Text>
-              <Text variant="caption" muted numberOfLines={1}>
-                {planSummary}
-              </Text>
-            </View>
-            <Ionicons
-              name="chevron-forward"
-              size={16}
-              color={COLORS.textMuted}
-            />
-          </View>
-        </Card>
-
-        <View style={styles.linkRow}>
-          <Pressable
-            style={styles.linkCard}
-            onPress={() => router.push('/store-modal')}
-          >
-            <Ionicons name="diamond-outline" size={18} color={COLORS.gold} />
-            <Text variant="subheading">Store</Text>
-            <Text variant="caption" muted>
-              Themes · packs · pass
-            </Text>
-          </Pressable>
-          <Pressable
-            style={styles.linkCard}
-            onPress={() => router.push('/community-modal')}
-          >
-            <Ionicons name="earth-outline" size={18} color={COLORS.primary} />
-            <Text variant="subheading">Community</Text>
-            <Text variant="caption" muted>
-              Charts · season rank
-            </Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.blockTop}>
-          <QuickStats stats={player.stats} money={player.money} />
-        </View>
+        <Grid columns={4} style={styles.bare}>
+          <Shortcut icon="calendar" color={COLORS.accent} label="Plan" onPress={() => router.push('/plan-modal')} />
+          <Shortcut icon="book" color={COLORS.primary} label="Chronicle" onPress={() => router.push('/chronicle-modal')} />
+          <Shortcut icon="earth" color={COLORS.positive} label="Community" onPress={() => router.push('/community-modal')} />
+          <Shortcut icon="diamond" color={COLORS.gold} label="Store" onPress={() => router.push('/store-modal')} />
+        </Grid>
+        <Grid columns={4} style={styles.bare}>
+          <Shortcut icon="person" color={'#FF7EBD'} label="You" onPress={() => router.push('/you-modal')} />
+          <Shortcut icon="stats-chart" color={COLORS.accent} label="Charts" onPress={() => router.push('/chart-modal')} />
+          <Shortcut icon="today" color={'#FF8A3D'} label="Year" onPress={() => router.push('/year-modal')} />
+          <Shortcut icon="ribbon" color={COLORS.gold} label="Legacy" onPress={() => router.push('/legacy-modal')} />
+        </Grid>
       </ScrollView>
 
       <AdvanceBar
@@ -393,79 +447,57 @@ export default function Deck() {
         onAdvance={onAdvance}
         onJumpToDecision={() => scrollToAnchor(true)}
       />
+
+      {turn && (
+        <WeekTransition
+          key={turn.week}
+          week={turn.week}
+          subtitle={turn.subtitle}
+          onDone={() => setTurn(null)}
+        />
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.bg },
+  safe: { flex: 1, backgroundColor: 'transparent' },
   flex: { flex: 1 },
-  flexShrink: { flexShrink: 1 },
-  header: {
-    paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.md,
-    paddingBottom: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: SPACING.base,
-  },
-  artist: { marginTop: 2 },
-  headerStats: {
-    flexDirection: 'row',
-    marginTop: SPACING.base,
-    gap: SPACING.xl,
-  },
-  headerStatValue: { marginTop: 1 },
-  iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   content: {
-    paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.sm,
+    paddingHorizontal: SPACING.base + 4,
+    paddingTop: SPACING.xs,
     paddingBottom: SPACING.xl,
   },
-  earlier: { paddingVertical: SPACING.sm },
-  handled: { paddingVertical: SPACING.base, marginBottom: SPACING.base },
-  handledSub: { marginTop: SPACING.xs },
-  block: { marginBottom: SPACING.base },
-  blockTop: { marginTop: SPACING.md },
-  alertRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
-  alertRowGap: { marginTop: SPACING.base },
-  alertDot: {
-    width: 28,
-    height: 28,
-    borderRadius: RADIUS.full,
+  earlier: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  planRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
-  planIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  linkRow: { flexDirection: 'row', gap: SPACING.md, marginTop: SPACING.md },
-  linkCard: {
-    flex: 1,
-    gap: SPACING.xs,
-    padding: SPACING.base,
-    borderRadius: RADIUS.lg,
+    alignSelf: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.05)',
     borderWidth: 1,
     borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
+    marginTop: SPACING.sm,
   },
+  handled: {
+    alignItems: 'center',
+    gap: 4,
+    paddingTop: SPACING.sm,
+    paddingBottom: SPACING.lg,
+  },
+  handledTitle: { marginTop: SPACING.sm },
+  block: { marginBottom: SPACING.base },
+  alertHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: SPACING.md },
+  pulseDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.negative,
+  },
+  alertRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
+  alertRowGap: { marginTop: SPACING.md },
+  bare: { marginTop: SPACING.lg },
+  shortcut: { alignItems: 'center', gap: SPACING.sm },
 });

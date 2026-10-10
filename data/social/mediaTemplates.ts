@@ -4,7 +4,7 @@ import { pick } from '../../utils/random';
 /**
  * SAMPLE MEDIA CATALOGS.
  *
- * Posts on the visual (VibeSnap) and short-video (HypeFeed) platforms carry an
+ * Posts on the visual (VibeGram) and short-video (TokTalk) platforms carry an
  * image-style or short-video *description* instead of bare text. These read as
  * the caption/alt-text the deterministic sim attaches; the AI layer may later
  * rewrite the post body, but the structured `media.kind` is preserved.

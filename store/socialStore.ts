@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { SocialPost, TrendingTopic, Platform } from '../types/social';
+import type { MyComment, SocialPost, TrendingTopic, Platform } from '../types/social';
 import { saveData, loadData } from '../database/gameRepository';
 
 interface SocialStoreState {
@@ -9,10 +9,17 @@ interface SocialStoreState {
   postHistory: SocialPost[];    // all-time posts for "memory" system
   lastGeneratedWeek: number;
   aiEnhancing: boolean;         // Phase 4: async feed upgrade in flight
-  /** Post the thread-modal is focused on (session only). */
-  focusedPost: SocialPost | null;
-  /** Account id the profile-modal is focused on (session only). */
-  focusedAccountId: string | null;
+  /**
+   * Newest post id each phone app showed when it was last opened. The feed is
+   * newest-first, so everything above it is unread — the icon's badge.
+   */
+  seenTop: Partial<Record<Platform, string>>;
+  /** What the artist posted themselves from the phone apps, newest first. */
+  authored: SocialPost[];
+  /** Named artist id -> the world engine artist whose life they live (systems/social/celebFeed). */
+  castLinks: Record<string, string>;
+  /** What the artist wrote in comment sections, newest first (people answer them). */
+  myComments: MyComment[];
 }
 
 interface SocialStoreActions {
@@ -22,8 +29,11 @@ interface SocialStoreActions {
   addToHistory: (posts: SocialPost[]) => void;
   setLastGeneratedWeek: (week: number) => void;
   setAiEnhancing: (v: boolean) => void;
-  setFocusedPost: (post: SocialPost | null) => void;
-  setFocusedAccountId: (id: string | null) => void;
+  /** Opening an app reads this week's posts on it, clearing its badge. */
+  markSeen: (platform: Platform) => void;
+  addAuthored: (post: SocialPost) => void;
+  setCastLinks: (links: Record<string, string>) => void;
+  addMyComment: (c: MyComment) => void;
   getHistoryForEvent: (eventId: string) => SocialPost[];
   save: () => void;
   load: () => void;
@@ -39,8 +49,10 @@ export const useSocialStore = create<SocialStore>((set, get) => ({
   postHistory: [],
   lastGeneratedWeek: 0,
   aiEnhancing: false,
-  focusedPost: null,
-  focusedAccountId: null,
+  seenTop: {},
+  authored: [],
+  castLinks: {},
+  myComments: [],
 
   setFeed(posts) {
     set({ feed: posts });
@@ -67,12 +79,27 @@ export const useSocialStore = create<SocialStore>((set, get) => ({
     set({ aiEnhancing: v });
   },
 
-  setFocusedPost(post) {
-    set({ focusedPost: post });
+  markSeen(platform) {
+    const top = get().feed.find((p) => p.platform === platform)?.id;
+    if (!top || get().seenTop[platform] === top) return;
+    set((s) => ({ seenTop: { ...s.seenTop, [platform]: top } }));
+    get().save();
   },
 
-  setFocusedAccountId(id) {
-    set({ focusedAccountId: id });
+  addAuthored(post) {
+    set((s) => ({ authored: [post, ...s.authored].slice(0, 80) }));
+    get().save();
+  },
+
+  setCastLinks(links) {
+    set({ castLinks: links });
+    get().save();
+  },
+
+  addMyComment(c) {
+    // Keep the post along only while it's needed: the artist's own posts are always findable.
+    set((s) => ({ myComments: [c, ...s.myComments].slice(0, 300) }));
+    get().save();
   },
 
   getHistoryForEvent(eventId) {
@@ -80,16 +107,27 @@ export const useSocialStore = create<SocialStore>((set, get) => ({
   },
 
   save() {
-    const { postHistory, lastGeneratedWeek } = get();
-    saveData('social', { postHistory: postHistory.slice(0, 50), lastGeneratedWeek });
+    const { postHistory, lastGeneratedWeek, seenTop, authored, castLinks, myComments } = get();
+    saveData('social', { postHistory: postHistory.slice(0, 50), lastGeneratedWeek, seenTop, authored, castLinks, myComments });
   },
 
   load() {
-    const saved = loadData<{ postHistory: SocialPost[]; lastGeneratedWeek: number }>('social');
+    const saved = loadData<{
+      postHistory: SocialPost[];
+      lastGeneratedWeek: number;
+      seenTop?: Partial<Record<Platform, string>>;
+      authored?: SocialPost[];
+      castLinks?: Record<string, string>;
+      myComments?: MyComment[];
+    }>('social');
     if (saved) {
       set({
         postHistory: saved.postHistory ?? [],
         lastGeneratedWeek: saved.lastGeneratedWeek ?? 0,
+        seenTop: saved.seenTop ?? {},
+        authored: saved.authored ?? [],
+        castLinks: saved.castLinks ?? {},
+        myComments: saved.myComments ?? [],
       });
     }
   },
@@ -101,8 +139,10 @@ export const useSocialStore = create<SocialStore>((set, get) => ({
       postHistory: [],
       lastGeneratedWeek: 0,
       aiEnhancing: false,
-      focusedPost: null,
-      focusedAccountId: null,
+      seenTop: {},
+      authored: [],
+      castLinks: {},
+      myComments: [],
     });
   },
 }));

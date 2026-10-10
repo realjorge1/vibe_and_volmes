@@ -26,6 +26,17 @@ import { useCommunityStore } from '../../store/communityStore';
 import { useWorldStore } from '../../store/worldStore';
 import { useActivityStore } from '../../store/activityStore';
 import { usePeopleStore } from '../../store/peopleStore';
+import { useNotificationStore } from '../../store/notificationStore';
+import { useDramaStore } from '../../store/dramaStore';
+import { useIdentityStore } from '../../store/identityStore';
+import { useCalendarStore } from '../../store/calendarStore';
+import { useLegalStore } from '../../store/legalStore';
+import { useMogulStore } from '../../store/mogulStore';
+import { useShowStore } from '../../store/showStore';
+import { useRealPhotoStore } from '../../store/realPhotoStore';
+import { clearSchedule } from '../notifications/schedule';
+import { pastLifeFrom } from '../meta/legends';
+import { clearShade } from '../notifications/deliver';
 
 export interface RetirementResult {
   dossier: CareerDossier;
@@ -60,6 +71,9 @@ export function retireCareer(endingId: EndingId = 'retirement'): RetirementResul
   };
 
   const minted = useMetaStore.getState().recordRetirement(dossier);
+  // The artist lives on in the worlds of the lives after this one.
+  const life = pastLifeFrom(dossier);
+  if (life) useMetaStore.getState().addPastLife(life);
 
   // Wipe persisted per-save data (NOT meta_profile — see gameRepository).
   clearAllData();
@@ -69,6 +83,8 @@ export function retireCareer(endingId: EndingId = 'retirement'): RetirementResul
   useGameStore.getState().reset();
   useMusicStore.getState().reset();
   useSocialStore.getState().reset();
+  // The old artist's posts are gone, so are the private copies of their real photos.
+  useRealPhotoStore.getState().reset();
   useRelationshipStore.getState().reset();
   useAudioStore.getState().reset();
   useLabelStore.getState().reset();
@@ -84,6 +100,16 @@ export function retireCareer(endingId: EndingId = 'retirement'): RetirementResul
   useCommunityStore.getState().reset();
   useActivityStore.getState().reset();
   usePeopleStore.getState().reset();
+  // The old career's phone goes quiet: nothing pending, nothing in the shade.
+  useNotificationStore.getState().reset();
+  useDramaStore.getState().reset();
+  useIdentityStore.getState().reset();
+  useCalendarStore.getState().reset();
+  useLegalStore.getState().reset();
+  useMogulStore.getState().reset();
+  useShowStore.getState().reset();
+  clearSchedule();
+  clearShade();
   // The NPC world must be null here, or initializeFirstWeek() skips
   // bootstrapWorld() and the next career inherits this one's cast.
   useWorldStore.getState().reset();

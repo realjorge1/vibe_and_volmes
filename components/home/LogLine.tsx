@@ -6,16 +6,16 @@ import { SPACING } from '../../constants/theme';
 import { Text } from '../ui/Typography';
 
 /**
- * One line of career history — a category dot and the beat that happened.
- * Deliberately light: past weeks should read as a log you scroll past, not
- * compete with the decision at the bottom of the column.
+ * One line of career history on the timeline rail — a glowing category node
+ * and the beat that happened. Light on purpose: past weeks read as a log you
+ * scroll past, not competition for the live decision.
  */
 export function LogLine({ entry }: { entry: EventHistoryEntry }) {
+  const color = categoryColor(entry.category);
   return (
     <View style={styles.row}>
-      <View
-        style={[styles.dot, { backgroundColor: categoryColor(entry.category) }]}
-      />
+      <View style={styles.rail} />
+      <View style={[styles.node, { backgroundColor: color }]} />
       <Text variant="caption" muted style={styles.text}>
         {entry.flavorText}
       </Text>
@@ -28,9 +28,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: SPACING.md,
-    paddingVertical: SPACING.xs + 2,
+    paddingVertical: SPACING.xs + 3,
+    paddingLeft: 2,
+  },
+  rail: {
+    position: 'absolute',
+    left: 5,
+    top: 0,
+    bottom: 0,
+    width: 1,
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
   // Nudged down to sit on the first line's optical center.
-  dot: { width: 5, height: 5, borderRadius: 999, marginTop: 7 },
+  node: { width: 7, height: 7, borderRadius: 4, marginTop: 6 },
   text: { flex: 1 },
 });

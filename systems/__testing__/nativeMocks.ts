@@ -79,9 +79,12 @@ const M = Module as unknown as {
   _load: (request: string, ...rest: unknown[]) => unknown;
 };
 const originalLoad = M._load;
+let assetId = 0;
 M._load = function (request: string, ...rest: unknown[]) {
   if (request in FAKES) return FAKES[request];
-  if (/^(expo-|react-native|@expo\/)/.test(request)) return inertModule();
+  // Bundled media (photos, beats) is a numeric asset id under Metro.
+  if (/\.(webp|png|jpe?g|gif|wav|mp3|m4a)$/i.test(request)) return ++assetId;
+  if (request === 'expo' || /^(expo-|react-native|@expo\/)/.test(request)) return inertModule();
   return originalLoad.call(this, request, ...rest);
 };
 

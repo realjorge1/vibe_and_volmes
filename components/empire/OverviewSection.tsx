@@ -1,5 +1,6 @@
 import { View, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useMusicStore } from '../../store/musicStore';
 import { useGameStore } from '../../store/gameStore';
 import { useRelationshipStore } from '../../store/relationshipStore';
@@ -9,7 +10,14 @@ import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Text } from '../ui/Typography';
 import { Metric } from '../ui/Metric';
+import { StatBar } from '../ui/StatBar';
+import { SectionTitle } from '../ui/SectionTitle';
+import { ListGroup } from '../ui/ListGroup';
+import { Grid } from '../ui/Grid';
 import { TrackCard } from '../music/TrackCard';
+import { DramaSection } from './DramaSection';
+import { Orb3D } from '../fx/Orb3D';
+import { Tile3D } from '../fx/Tile3D';
 import { getCultureBias } from '../../systems/culture/cultureEngine';
 import {
   stageForProgress,
@@ -18,12 +26,28 @@ import {
 } from '../../systems/career/careerStage';
 import { computeLegacy, deriveIdentity } from '../../systems/legacy';
 import { formatStreams } from '../../utils/statHelpers';
-import { COLORS, RADIUS, SPACING } from '../../constants/theme';
+import { COLORS, SPACING, shade, withAlpha } from '../../constants/theme';
 
 function affinityColor(affinity: number): string {
   if (affinity >= 40) return COLORS.positive;
   if (affinity <= -40) return COLORS.negative;
   return COLORS.neutral;
+}
+
+function Unlock({ icon, label, value }: { icon: string; label: string; value: string }) {
+  return (
+    <View style={styles.unlock}>
+      <Tile3D icon={icon} color={COLORS.primary} size={30} />
+      <View style={styles.flex}>
+        <Text variant="label" muted style={styles.unlockLabel}>
+          {label.toUpperCase()}
+        </Text>
+        <Text variant="caption" style={styles.unlockValue} numberOfLines={2}>
+          {value}
+        </Text>
+      </View>
+    </View>
+  );
 }
 
 /** Empire · Overview — career stage, era, legacy, discography, people, history. */
@@ -43,64 +67,64 @@ export function OverviewSection() {
   const stage = stageForProgress(level, fans);
   const next = nextStage(stage);
   const progress = stageProgress(level, fans);
+  const eraColor =
+    culture.playerGenreFit >= 1.1 ? COLORS.positive : culture.playerGenreFit <= 0.9 ? COLORS.negative : COLORS.accent;
 
   return (
     <View>
       <Card accent={COLORS.primary}>
-        <Text variant="label" muted>
-          CAREER STAGE
-        </Text>
-        <Text variant="title" style={styles.stageName}>
-          {stage.label}
-        </Text>
-        <Text variant="caption" muted style={styles.section}>
-          {stage.blurb}
-        </Text>
+        <View style={styles.stageRow}>
+          <View style={styles.flex}>
+            <Text variant="label" muted>
+              CAREER STAGE
+            </Text>
+            <Text variant="title" style={styles.stageName}>
+              {stage.label}
+            </Text>
+            <Text variant="caption" muted style={styles.blurb}>
+              {stage.blurb}
+            </Text>
+          </View>
+          <Orb3D size={54} color={COLORS.primary} icon="rocket" />
+        </View>
 
-        <View style={styles.stageBarTrack}>
-          <View
-            style={[
-              styles.stageBarFill,
-              { width: `${Math.round(progress * 100)}%` },
-            ]}
+        <View style={styles.stageBar}>
+          <StatBar
+            label={
+              next
+                ? `Next: ${next.label} — level ${next.minLevel} · ${formatStreams(next.minFans)} fans`
+                : 'You are at the top of the ladder.'
+            }
+            value={progress * 100}
+            showValue={false}
+            color={COLORS.primary}
           />
         </View>
-        {next ? (
-          <Text variant="caption" muted style={styles.stageNext}>
-            Next: {next.label} — reach level {next.minLevel} ·{' '}
-            {formatStreams(next.minFans)} fans
-          </Text>
-        ) : (
-          <Text variant="caption" muted style={styles.stageNext}>
-            You are at the top of the ladder.
-          </Text>
-        )}
 
-        <Text variant="label" muted style={styles.section}>
-          UNLOCKED
-        </Text>
-        <Text variant="caption" muted style={styles.unlockLine}>
-          Venues · {stage.unlocks.venues}
-        </Text>
-        <Text variant="caption" muted style={styles.unlockLine}>
-          Collabs ·{' '}
-          {stage.unlocks.maxCollabFans === Number.POSITIVE_INFINITY
-            ? 'any artist'
-            : `up to ${formatStreams(stage.unlocks.maxCollabFans)} fans`}
-        </Text>
-        <Text variant="caption" muted style={styles.unlockLine}>
-          Sponsorships · {stage.unlocks.sponsorships}
-        </Text>
-        <Text variant="caption" muted style={styles.unlockLine}>
-          Media · {stage.unlocks.media}
-        </Text>
+        <Grid columns={2} gap={SPACING.md} style={styles.unlocks}>
+          <Unlock icon="location" label="Venues" value={stage.unlocks.venues} />
+          <Unlock
+            icon="people"
+            label="Collabs"
+            value={
+              stage.unlocks.maxCollabFans === Number.POSITIVE_INFINITY
+                ? 'Any artist'
+                : `Up to ${formatStreams(stage.unlocks.maxCollabFans)} fans`
+            }
+          />
+          <Unlock icon="pricetag" label="Sponsors" value={stage.unlocks.sponsorships} />
+          <Unlock icon="radio" label="Media" value={stage.unlocks.media} />
+        </Grid>
       </Card>
 
-      <Card>
-        <Text variant="label" muted>
-          THE ERA · {culture.eraLabel.toUpperCase()}
-        </Text>
-        <Text variant="body" style={styles.section}>
+      <View style={styles.era}>
+        <View style={styles.eraHead}>
+          <Ionicons name="pulse" size={16} color={eraColor} />
+          <Text variant="label" color={eraColor}>
+            THE ERA · {culture.eraLabel.toUpperCase()}
+          </Text>
+        </View>
+        <Text variant="body" style={styles.eraBody}>
           Your sound is {culture.playerGenreTrend} (heat{' '}
           {culture.playerGenreHeat}/100).{' '}
           {culture.playerGenreFit >= 1.1
@@ -109,112 +133,140 @@ export function OverviewSection() {
               ? 'You are working against the current.'
               : 'The culture is neutral on you.'}
         </Text>
-      </Card>
+        <StatBar label="Genre heat" value={culture.playerGenreHeat} color={eraColor} />
+      </View>
 
-      <Card>
+      <Card accent={COLORS.gold}>
         <View style={styles.dualRow}>
           <Metric
             label={`Legacy · ${legacy.tier}`}
             value={`${legacy.total}`}
             sub="/ 1000"
+            color={COLORS.gold}
           />
           <Metric
             label="Total streams"
-            value={totalStreams.toLocaleString('en-US')}
+            value={formatStreams(totalStreams)}
+            sub={totalStreams.toLocaleString('en-US')}
             align="right"
           />
         </View>
-        <Text variant="caption" muted style={styles.section}>
+        <Text variant="caption" muted style={styles.identity}>
           {identity.title} · {fans.toLocaleString('en-US')} fans
         </Text>
         <Button
           label="Open Chronicle"
+          icon="book"
           variant="outline"
           onPress={() => router.push('/chronicle-modal')}
         />
       </Card>
 
-      <Text variant="heading" style={styles.section}>
+      <SectionTitle accent={COLORS.secondary} meta={`${discography.length}`}>
         Discography
-      </Text>
+      </SectionTitle>
       {discography.length === 0 ? (
         <Text variant="body" muted>
           No releases yet.
         </Text>
       ) : (
-        discography.map((t) => <TrackCard key={t.id} track={t} />)
+        <ListGroup>
+          {discography.map((t) => (
+            <TrackCard key={t.id} track={t} />
+          ))}
+        </ListGroup>
       )}
 
-      <Text variant="heading" style={styles.section}>
+      <DramaSection />
+
+      <SectionTitle accent={COLORS.accent} meta={`${knownArtists.length}`}>
         Relationships
-      </Text>
+      </SectionTitle>
       {knownArtists.length === 0 ? (
         <Text variant="body" muted>
           You haven&apos;t crossed paths with anyone in the industry yet.
         </Text>
       ) : (
-        knownArtists.map((a) => {
-          const rel = relationships[a.id];
-          return (
-            <Card key={a.id}>
-              <View style={styles.relRow}>
+        <ListGroup>
+          {knownArtists.map((a) => {
+            const rel = relationships[a.id];
+            const aff = rel?.affinity ?? 0;
+            const c = affinityColor(aff);
+            return (
+              <View key={a.id} style={styles.relRow}>
+                <View style={[styles.relAvatar, { backgroundColor: withAlpha(c, 0.18), borderColor: withAlpha(c, 0.5) }]}>
+                  <Text variant="subheading" color={shade(c, 0.3)} weight="bold">
+                    {a.name.trim()[0]?.toUpperCase() ?? '?'}
+                  </Text>
+                </View>
                 <View style={styles.flex}>
                   <Text variant="subheading">{a.name}</Text>
                   <Text variant="caption" muted>
                     {a.genre} · {rel?.type ?? 'neutral'}
                   </Text>
                 </View>
-                <Text
-                  variant="metric"
-                  color={affinityColor(rel?.affinity ?? 0)}
-                >
-                  {rel?.affinity ?? 0}
+                <Text variant="metric" color={c} style={styles.affinity}>
+                  {aff > 0 ? `+${aff}` : aff}
                 </Text>
               </View>
-            </Card>
-          );
-        })
+            );
+          })}
+        </ListGroup>
       )}
 
-      <Text variant="heading" style={styles.section}>
-        History
-      </Text>
+      <SectionTitle accent={COLORS.textSecondary}>History</SectionTitle>
       {historyLog.length === 0 ? (
         <Text variant="body" muted>
           Your story hasn&apos;t started yet.
         </Text>
       ) : (
-        <Card>
+        <View>
           {historyLog.slice(0, 20).map((e, i) => (
-            <Text key={i} variant="caption" muted style={styles.logLine}>
-              {e.flavorText}
-            </Text>
+            <View key={i} style={styles.logRow}>
+              <View style={styles.logDot} />
+              <Text variant="caption" muted style={styles.logLine}>
+                {e.flavorText}
+              </Text>
+            </View>
           ))}
-        </Card>
+        </View>
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  section: { marginTop: SPACING.lg, marginBottom: SPACING.md },
-  stageName: { marginTop: SPACING.xs },
-  relRow: { flexDirection: 'row', alignItems: 'center' },
-  dualRow: { flexDirection: 'row', justifyContent: 'space-between' },
   flex: { flex: 1 },
-  logLine: { marginBottom: SPACING.sm, lineHeight: 18 },
-  stageBarTrack: {
-    height: 4,
-    backgroundColor: COLORS.surface3,
-    borderRadius: RADIUS.sm,
-    overflow: 'hidden',
-    marginTop: SPACING.md,
+  stageRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
+  stageName: { marginTop: SPACING.xs },
+  blurb: { marginTop: SPACING.xs },
+  stageBar: { marginTop: SPACING.base, marginBottom: -SPACING.xs },
+  unlocks: { marginTop: SPACING.md },
+  unlock: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 2 },
+  unlockLabel: { fontSize: 9 },
+  unlockValue: { lineHeight: 16, fontSize: 12 },
+  era: { paddingVertical: SPACING.md, marginBottom: SPACING.sm },
+  eraHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  eraBody: { marginTop: SPACING.sm, marginBottom: SPACING.md },
+  dualRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  identity: { marginTop: SPACING.md, marginBottom: SPACING.md },
+  relRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm + 2,
   },
-  stageBarFill: {
-    height: '100%',
-    borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.primary,
+  relAvatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  stageNext: { marginTop: SPACING.sm },
-  unlockLine: { marginTop: SPACING.xs, lineHeight: 18 },
+  affinity: { fontSize: 17 },
+  logRow: { flexDirection: 'row', gap: SPACING.sm, marginBottom: SPACING.sm },
+  logDot: { width: 5, height: 5, borderRadius: 3, marginTop: 7, backgroundColor: COLORS.primary },
+  logLine: { flex: 1, lineHeight: 18 },
 });

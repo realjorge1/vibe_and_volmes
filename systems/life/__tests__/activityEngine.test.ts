@@ -37,9 +37,9 @@ const TOKENS = { playerName: 'Nova Kay', npc: 'DJ Rook' };
 
 // ─── Catalog ────────────────────────────────────────────────────────────────
 
-test('20+ activities, at least three in each of the six categories', () => {
+test('20+ activities, at least three in each of the nine categories', () => {
   assert.ok(LIFE_ACTIVITIES.length >= 20, `only ${LIFE_ACTIVITIES.length}`);
-  assert.equal(ACTIVITY_CATEGORIES.length, 6);
+  assert.equal(ACTIVITY_CATEGORIES.length, 9);
   for (const cat of ACTIVITY_CATEGORIES) {
     const n = LIFE_ACTIVITIES.filter((a) => a.category === cat.id).length;
     assert.ok(n >= 3, `${cat.id} has ${n}`);
@@ -52,6 +52,8 @@ test('activity and outcome ids are unique; weights and costs are sane', () => {
     assert.ok(!ids.has(a.id), `duplicate activity ${a.id}`);
     ids.add(a.id);
     assert.ok(a.energyCost > 0, `${a.id} is free`);
+    // Launchers (the escape) open their own screen instead of rolling.
+    if (a.opens) continue;
     assert.ok(a.outcomes.length >= 2, `${a.id} has one outcome`);
     const outcomeIds = new Set(a.outcomes.map((o) => o.id));
     assert.equal(outcomeIds.size, a.outcomes.length, `${a.id} repeats an outcome id`);

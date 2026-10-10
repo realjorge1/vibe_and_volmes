@@ -3,13 +3,23 @@ import type {
   Achievement,
   LiveNotification,
 } from '../../types/progression';
-import { useLiveStore } from '../../store/liveStore';
+import { notifyGame } from '../notifications/triggers';
 
 /**
  * The dopamine router. Everything that should make the player FEEL
- * something funnels through here into the one notification stack.
+ * something funnels through here. It lands as a real notification on the
+ * device (the in-app heads-up banner when the OS can't show one).
  * Kept separate from the stores so engines never import UI state shape.
  */
+
+const KIND: Record<LiveNotification['kind'], 'level' | 'achievement' | 'energy' | 'info'> = {
+  'level-up': 'level',
+  achievement: 'achievement',
+  'energy-full': 'energy',
+  away: 'info',
+  xp: 'info',
+  info: 'info',
+};
 
 const TIER_COLOR: Record<Achievement['tier'], string> = {
   bronze: '#C08457',
@@ -21,14 +31,14 @@ const TIER_COLOR: Record<Achievement['tier'], string> = {
 export function pushNotification(
   n: Omit<LiveNotification, 'id' | 'at'>
 ): void {
-  useLiveStore.getState().pushNotification(n);
+  notifyGame(KIND[n.kind], n.title, n.body, n.color);
 }
 
 export function pushLevelUps(ups: LevelUpResult[]): void {
   for (const up of ups) {
     pushNotification({
       kind: 'level-up',
-      title: `LEVEL ${up.to} — ${up.level.title}`,
+      title: `Level ${up.to}: ${up.level.title}`,
       body: `${up.level.milestone} ${up.level.blurb}`,
       color: up.level.color,
     });

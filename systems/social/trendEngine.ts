@@ -141,8 +141,9 @@ export function trendAlignmentFor(
   sentiment: PostSentiment,
   topics: TrendingTopic[]
 ): number {
-  if (topics.length === 0) return 0;
-  const top = topics.slice(0, 4);
+  const own = topics.filter((t) => !t.world);
+  if (own.length === 0) return 0;
+  const top = own.slice(0, 4);
   let best = 0;
   for (const t of top) {
     if (t.sentiment === sentiment) {
@@ -165,7 +166,7 @@ export function trendStreamMultiplier(
 ): number {
   if (!latestTrack || week - latestTrack.releasedAtWeek > 4) return 1;
   let boost = 1;
-  for (const t of topics.slice(0, 5)) {
+  for (const t of topics.filter((x) => !x.world).slice(0, 5)) {
     if (t.kind === 'song') boost += t.momentum === 'rising' ? 0.35 : 0.18;
     else if (t.kind === 'meme' && t.sentiment === 'hype') boost += 0.2;
     else if (t.kind === 'fashion') boost += 0.06;

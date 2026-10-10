@@ -14,6 +14,66 @@ import { usePeopleStore } from '../../store/peopleStore';
 import { activePeople, newPersonId } from '../life/peopleEngine';
 import { useStatusStore } from '../../store/statusStore';
 import { settleHome } from '../life/assetTick';
+import { spawnMoment, hottestRival } from '../drama/publish';
+import { useDramaStore } from '../../store/dramaStore';
+import { newWar, swing } from '../drama/rivalWar';
+import { gainTrait, plantSeed } from '../identity/identityTick';
+import { removeTrait, traitEffects } from '../identity/traits';
+import { chargeArtist, hireLawyer } from '../legal/legalTick';
+import { buyBackMasters, mastersSold } from '../music/mastersActions';
+import { buybackPrice } from '../music/royalties';
+import { useMusicStore } from '../../store/musicStore';
+import { signDealNow } from '../industry/dealActions';
+import { holidayTitle, jailTitle, releaseQuickTrack } from '../music/quickRelease';
+import { applySigneeAction } from '../mogul/mogulActions';
+import { useMetaStore } from '../../store/metaStore';
+import { publishStoryBeat } from '../social/storyPost';
+import { announceComeback, COMEBACK_TAG } from '../career/comeback';
+
+/** A song put out from a story beat (no studio session). */
+function releaseFromStory(kind: 'holiday' | 'jail-tape' | 'tribute'): void {
+  if (kind === 'holiday') {
+    const r = releaseQuickTrack({ title: holidayTitle(), streamsMult: 1.3, extra: { seasonal: 'holiday' } });
+    if (r) {
+      useGameStore
+        .getState()
+        .addStoryLine(`"${r.track.title}" is out. It will come back every December, whether you like it or not.`, 'career', 'release:holiday');
+    }
+    return;
+  }
+  if (kind === 'jail-tape') {
+    const r = releaseQuickTrack({ title: jailTitle(), streamsMult: 1.4, buzz: 70, extra: { jailTape: true }, respect: 2 });
+    if (r) {
+      usePlayerStore.getState().updateStats([
+        { stat: 'authenticity', delta: 4 },
+        { stat: 'fanLoyalty', delta: 3 },
+      ]);
+      const name = usePlayerStore.getState().player?.artistName ?? 'them';
+      publishStoryBeat(
+        {
+          sentiment: 'hype',
+          from: 'fan',
+          text: `${name} recorded "${r.track.title}" over a prison phone and it still goes harder than anything out this week. FREE THEM`,
+          trend: `Free${name.replace(/[^A-Za-z0-9]/g, '')}`,
+        },
+        'release:jail-tape'
+      );
+    }
+    return;
+  }
+  const legend = useMetaStore.getState().pastLives[0];
+  const hit = legend?.hits[0]?.title;
+  const r = releaseQuickTrack({
+    streamsMult: 1.25,
+    buzz: 40,
+    extra: hit ? { sampleOf: hit } : {},
+  });
+  if (r && legend && hit) {
+    useGameStore
+      .getState()
+      .addStoryLine(`"${r.track.title}" samples ${legend.artistName}'s "${hit}". The old heads noticed first.`, 'career', 'release:tribute');
+  }
+}
 
 export interface ConsequenceResult {
   socialReaction: SocialReactionType;
@@ -46,6 +106,8 @@ export function applyConsequence(
 
   if (consequence.addTags) {
     for (const tag of consequence.addTags) game.addTag(tag);
+    // Declaring a comeback in a story starts the comeback for real.
+    if (consequence.addTags.includes(COMEBACK_TAG)) announceComeback(true);
   }
 
   if (consequence.removeTags) {
@@ -137,6 +199,7 @@ export function applyConsequence(
         sinceWeek: week,
         lastSeenWeek: week,
         ...(np.role === 'partner' ? { bond: 'dating' as const } : {}),
+        ...(np.role === 'child' ? { bornWeek: week - (np.bornWeeksAgo ?? 0) } : {}),
       });
     }
   }
@@ -150,6 +213,64 @@ export function applyConsequence(
     }
     // Losing the deed means losing the home that came with it.
     settleHome();
+  }
+
+  // ─── Drama layer ───
+
+  if (consequence.warSwing) {
+    const rival = hottestRival();
+    if (rival) {
+      const drama = useDramaStore.getState();
+      const war = drama.wars[rival.id] ?? newWar(rival.id, week);
+      // A Petty or Hotheaded artist's wins land harder.
+      const bonus = consequence.warSwing > 0 ? traitEffects().warBonus : 0;
+      drama.setWar(swing(war, consequence.warSwing + bonus, week, consequence.flavorText.slice(0, 80)));
+    }
+  }
+
+  if (consequence.moment) {
+    spawnMoment(consequence.moment);
+  }
+
+  // ─── Identity ───
+
+  if (consequence.plantSeed) {
+    plantSeed(consequence.plantSeed, week);
+  }
+  for (const t of consequence.addTraits ?? []) gainTrait(t);
+  for (const t of consequence.removeTraits ?? []) removeTrait(t);
+
+  // ─── The law ───
+
+  if (consequence.legalCharge) {
+    chargeArtist(consequence.legalCharge);
+  }
+  if (consequence.lawyer) {
+    hireLawyer(consequence.lawyer);
+  }
+
+  // ─── Business ───
+
+  if (consequence.masters?.action === 'sold') {
+    mastersSold();
+  } else if (consequence.masters?.action === 'buy-back') {
+    const price = buybackPrice(useMusicStore.getState().discography);
+    if (!buyBackMasters()) {
+      game.addStoryLine(
+        `You couldn't raise the $${price.toLocaleString('en-US')}. The masters stay where they are, for now.`,
+        'career',
+        'masters'
+      );
+    }
+  }
+  if (consequence.signDeal) {
+    signDealNow(consequence.signDeal, week);
+  }
+  if (consequence.signee) {
+    applySigneeAction(consequence.signee.action, consequence.signee.npcId);
+  }
+  if (consequence.releaseTrack) {
+    releaseFromStory(consequence.releaseTrack);
   }
 
   return {

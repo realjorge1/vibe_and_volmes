@@ -56,7 +56,7 @@ export default function StoreModal() {
   usePremiumStore((s) => s.season); // re-render on season changes
 
   return (
-    <Screen scroll>
+    <Screen scroll tint={COLORS.gold}>
       <View style={styles.header}>
         <Text variant="title">Store</Text>
         <View style={styles.wallet}>

@@ -1,116 +1,113 @@
 /**
- * "Tesla OS" design tokens — the single source of truth for the redesign.
+ * "Neon Stage" design tokens — the single source of truth for the look.
  *
- * Principles: pure-black canvas, white text, ONE cool accent (electric blue),
- * flat surfaces separated by hairlines (not drop shadows or gradients), tight
- * radii, large legible tabular numbers, generous negative space. Calm, premium,
- * engineering-grade. No red brand color, no glows, no glassy rounding.
+ * A console-grade dark UI: a deep indigo canvas under soft stage light,
+ * glass surfaces, a violet → pink → cyan brand gradient, clay-3D icons, and
+ * springy motion. Depth comes from real shadows, not colored glows.
  */
 
 export const COLORS = {
-  // Core canvas — true black, surfaces are barely-lifted near-blacks.
-  bg: '#000000',
-  surface: '#0B0B0C',
-  surface2: '#141518',
-  surface3: '#1C1E22',
-  border: 'rgba(255,255,255,0.08)',
-  borderLight: 'rgba(255,255,255,0.16)',
+  // Canvas — deep indigo-black; the ambient stage light is painted over it.
+  bg: '#07060E',
+  bgDeep: '#030208',
+  // Glass surfaces are translucent so the stage light bleeds through.
+  surface: 'rgba(28,24,54,0.62)',
+  surface2: 'rgba(44,38,82,0.66)',
+  surface3: 'rgba(70,62,122,0.45)',
+  // Opaque surface for anything that floats over content (toasts, sheets).
+  surfaceSolid: '#14112A',
+  border: 'rgba(255,255,255,0.09)',
+  borderLight: 'rgba(255,255,255,0.18)',
 
-  // Brand — a single electric blue accent carries everything.
-  primary: '#2E8DFF',
-  primaryPressed: '#1E6FE0',
-  // Legacy aliases kept so existing call sites stay valid; all point cool now.
-  secondary: '#5AA9FF',
-  accent: '#2E8DFF',
-  warning: '#E0A53B',
-  gold: '#D9C77E',
+  // Brand.
+  primary: '#8B6CFF',
+  primaryPressed: '#6E4DF5',
+  secondary: '#FF4FA3',
+  accent: '#36D6FF',
+  warning: '#FFB347',
+  gold: '#FFCE5C',
 
-  // Sentiment — desaturated, for DATA only (never decoration).
-  positive: '#3FB87F',
-  negative: '#E5544B',
-  neutral: '#7C8694',
+  // Sentiment.
+  positive: '#3BE8A6',
+  negative: '#FF5470',
+  neutral: '#8A87A8',
 
-  // Text ramp — white → muted gray → faint.
+  // Text ramp — white → lavender gray → faint.
   text: '#FFFFFF',
-  textSecondary: '#9BA1A8',
-  textMuted: '#5C636B',
-  textDisabled: '#34383E',
+  textSecondary: '#B9B5D6',
+  textMuted: '#77739A',
+  textDisabled: '#3B3858',
 
-  // Platform colors — desaturated so Social stays legible on black.
-  chirper: '#4A9FE0',
-  flashpic: '#C75C86',
-  tunetok: '#3FC5BC',
-  vibestream: '#7E8BE0',
+  // Platform colors.
+  chirper: '#4DA8FF',
+  flashpic: '#FF5FA2',
+  tunetok: '#2FE6D2',
+  vibestream: '#A08BFF',
 
   // Overlays / scrims for modals.
-  overlay: 'rgba(0,0,0,0.92)',
-  scrim: 'rgba(0,0,0,0.66)',
+  overlay: 'rgba(4,3,10,0.88)',
+  scrim: 'rgba(4,3,10,0.66)',
 
-  // Subtle additive tints (hairlines / pressed states).
-  glass: 'rgba(255,255,255,0.04)',
-  glassStrong: 'rgba(255,255,255,0.07)',
+  // Additive tints (hairlines / pressed states / glass highlights).
+  glass: 'rgba(255,255,255,0.05)',
+  glassStrong: 'rgba(255,255,255,0.09)',
   hairline: 'rgba(255,255,255,0.08)',
 } as const;
 
-/**
- * Deprecated: gradients are not used in the Tesla-OS look (flat fills only).
- * Kept as a shim — each entry collapses to a single flat color so any lingering
- * call site renders flat instead of breaking.
- */
+type Stops = readonly [string, string, ...string[]];
+
+/** Gradient stops, top-left → bottom-right unless a component says otherwise. */
 export const GRADIENTS = {
-  primary: ['#2E8DFF', '#2E8DFF'] as const,
-  violet: ['#5AA9FF', '#5AA9FF'] as const,
-  gold: ['#D9C77E', '#D9C77E'] as const,
-  teal: ['#2E8DFF', '#2E8DFF'] as const,
-  dark: ['#141518', '#0B0B0C'] as const,
-} as const;
+  brand: ['#FF4FA3', '#8B6CFF', '#36D6FF'],
+  primary: ['#A68CFF', '#6A45F5'],
+  violet: ['#B79CFF', '#7B5CFF'],
+  pink: ['#FF7EBD', '#E8367F'],
+  gold: ['#FFE48F', '#FFAE3B'],
+  teal: ['#5CF2E0', '#2AA8F0'],
+  fire: ['#FFB347', '#FF5470'],
+  mint: ['#7CF5C8', '#1FC98A'],
+  danger: ['#FF7A8C', '#E3355A'],
+  dark: ['#1B1636', '#0C0A1C'],
+  card: ['rgba(46,40,88,0.72)', 'rgba(20,17,42,0.72)'],
+  cardSolid: ['#221C44', '#110E24'],
+  sheen: ['rgba(255,255,255,0.14)', 'rgba(255,255,255,0)'],
+} as const satisfies Record<string, Stops>;
 
 /**
- * Elevation — flat. Depth comes from hairlines + spacing, not shadow. `sm` is a
- * barely-there lift for the rare floating element; `glow` is intentionally a
- * no-op alias of `sm` so old references don't reintroduce glows.
+ * Elevation. `boxShadow` (new architecture) is drawn only outside the view,
+ * so it stays clean behind translucent glass.
  */
 export const SHADOW = {
   none: {},
-  sm: {
-    shadowColor: '#000',
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  md: {
-    shadowColor: '#000',
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
-  },
-  lg: {
-    shadowColor: '#000',
-    shadowOpacity: 0.6,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 12,
-  },
-  // No-op alias (was a colored glow) — keeps call sites flat.
-  glow: {
-    shadowColor: '#000',
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
+  sm: { boxShadow: '0px 4px 12px rgba(0,0,0,0.35)' },
+  md: { boxShadow: '0px 10px 24px rgba(0,0,0,0.45)' },
+  lg: { boxShadow: '0px 18px 40px rgba(0,0,0,0.55)' },
 } as const;
 
-/** Motion — calm and precise, not springy. */
+/** Motion — springy and physical, like a console UI. */
 export const MOTION = {
   fast: 120,
-  base: 200,
-  slow: 360,
-  spring: { damping: 22, stiffness: 240, mass: 0.8 },
-  pressScale: 0.98,
+  base: 220,
+  slow: 420,
+  spring: { damping: 15, stiffness: 190, mass: 0.9 },
+  springSoft: { damping: 18, stiffness: 120, mass: 1 },
+  pressScale: 0.965,
 } as const;
+
+/**
+ * Master switch for every animation in the app. Off for now; flip to true to
+ * bring them all back. With it off, the root layout puts Reanimated in
+ * reduced-motion mode (every animation jumps straight to its end state),
+ * screens and modals change with no transition, and the motion that isn't
+ * Reanimated holds still: the stage's clock, number count-ups, photo
+ * cross-fades, video clips and the week-turn overlay.
+ */
+export const ANIMATIONS_ENABLED = false;
+
+/** An `entering` animation that only plays when ANIMATIONS_ENABLED is on. */
+export function ifAnimated<T>(animation: T): T | undefined {
+  return ANIMATIONS_ENABLED ? animation : undefined;
+}
 
 export const FONTS = {
   sizes: {
@@ -122,7 +119,7 @@ export const FONTS = {
     xl: 24,
     '2xl': 30,
     '3xl': 40,
-    '4xl': 56,
+    '4xl': 52,
   },
   weights: {
     regular: '400' as const,
@@ -138,6 +135,25 @@ export const FONTS = {
     wide: 0.6,
     wider: 1.6,
   },
+  /** Loaded in app/_layout.tsx; resolved per weight by the Text component. */
+  families: {
+    display: {
+      '400': 'Unbounded_400Regular',
+      '500': 'Unbounded_500Medium',
+      '600': 'Unbounded_600SemiBold',
+      '700': 'Unbounded_700Bold',
+      '800': 'Unbounded_800ExtraBold',
+      '900': 'Unbounded_900Black',
+    },
+    body: {
+      '400': 'Inter_400Regular',
+      '500': 'Inter_500Medium',
+      '600': 'Inter_600SemiBold',
+      '700': 'Inter_700Bold',
+      '800': 'Inter_800ExtraBold',
+      '900': 'Inter_900Black',
+    },
+  },
 } as const;
 
 export const SPACING = {
@@ -152,10 +168,41 @@ export const SPACING = {
 } as const;
 
 export const RADIUS = {
-  sm: 4,
-  md: 8,
-  lg: 12,
-  // `xl` kept for compatibility but tightened — no more glassy rounding.
-  xl: 14,
+  sm: 6,
+  md: 12,
+  lg: 18,
+  xl: 24,
   full: 999,
 } as const;
+
+/** `#RGB`, `#RRGGBB`, `rgb()` or `rgba()` → the same color at `alpha`. */
+export function withAlpha(color: string, alpha: number): string {
+  const a = Math.max(0, Math.min(1, alpha));
+  if (color.startsWith('#')) {
+    let hex = color.slice(1);
+    if (hex.length === 3) hex = hex.split('').map((c) => c + c).join('');
+    const n = parseInt(hex.slice(0, 6), 16);
+    return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+  }
+  const m = color.match(/rgba?\(([^)]+)\)/);
+  if (m) {
+    const [r, g, b] = m[1].split(',').map((s) => s.trim());
+    return `rgba(${r},${g},${b},${a})`;
+  }
+  return color;
+}
+
+/** Mix a hex color toward white (amount > 0) or black (amount < 0). */
+export function shade(color: string, amount: number): string {
+  if (!color.startsWith('#')) return color;
+  let hex = color.slice(1);
+  if (hex.length === 3) hex = hex.split('').map((c) => c + c).join('');
+  const n = parseInt(hex.slice(0, 6), 16);
+  const target = amount > 0 ? 255 : 0;
+  const t = Math.min(1, Math.abs(amount));
+  const mix = (c: number) => Math.round(c + (target - c) * t);
+  const r = mix((n >> 16) & 255);
+  const g = mix((n >> 8) & 255);
+  const b = mix(n & 255);
+  return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`;
+}

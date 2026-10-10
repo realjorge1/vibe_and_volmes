@@ -10,6 +10,8 @@ import { getEnding } from '../../data/life/endings';
 import { buildHeir } from '../life/endingEngine';
 import { computeLegacy, deriveIdentity } from './chronicleEngine';
 import { retireCareer, type RetirementResult } from './retirement';
+import { useMusicStore } from '../../store/musicStore';
+import { ownedCatalogWeekly } from '../music/royalties';
 
 /** Artist ids the family is at odds with: they will remember the name. */
 function familyRivalIds(): string[] {
@@ -55,6 +57,7 @@ export function endCareer(heirChildId?: string): EndCareerResult {
       legacyTier: computeLegacy().tier,
       ending: endingId,
       died: getEnding(endingId).kind === 'died',
+      catalogWeekly: ownedCatalogWeekly(useMusicStore.getState().discography),
     });
     useMetaStore.getState().setPendingHeir(heir);
   }

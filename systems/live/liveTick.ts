@@ -17,6 +17,7 @@ import { communityBoostActivities } from '../community';
 import { awardXp, checkAchievements } from '../progression/xpEngine';
 import { grantPremiumCurrency } from '../premium/premiumEngine';
 import { awardSeasonXp } from '../premium/seasonPass';
+import { notifyAway } from '../notifications/triggers';
 
 /**
  * The real-time heartbeat. Called when the app gains focus (mount + AppState
@@ -102,6 +103,7 @@ export function runLiveResume(now = Date.now()): void {
     if (report.ambientPosts.length > 0) {
       social.setFeed([...report.ambientPosts, ...social.feed].slice(0, 60));
       social.addToHistory(report.ambientPosts);
+      notifyAway(report.ambientPosts);
     }
 
     // Earnable premium currency + season XP — the come-back-tomorrow reward

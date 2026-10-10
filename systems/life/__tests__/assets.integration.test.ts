@@ -107,8 +107,9 @@ test('moving up pays a deposit, resets the burn, and lands in the Deck', () => {
   assert.equal(useStatusStore.getState().homeId, 'own-place');
   assert.equal(useCareerStore.getState().economy.lifestyleTier, getHome('own-place').lifestyleTier);
   assert.ok(usePlayerStore.getState().player!.money < 100_000);
-  const last = useGameStore.getState().lastWeekSummary.at(-1)!;
-  assert.equal(last.flavorText, getHome('own-place').moveInLine);
+  // The move is in the Deck (a want it fulfils may land right after it).
+  const lines = useGameStore.getState().lastWeekSummary.map((e) => e.flavorText);
+  assert.ok(lines.includes(getHome('own-place').moveInLine), 'the move-in line is in the Deck');
   assert.deepEqual(playerMoveHome('penthouse'), { ok: false, reason: 'Buy the City Penthouse first' });
 });
 

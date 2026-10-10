@@ -1,26 +1,26 @@
 // Fame ramp — restrained: gray (unknown) → blue (the brand accent) → white
 // (peak) → gold (legend). One accent, calm escalation.
 export const FAME_LEVELS = [
-  { level: 0, label: 'Unknown',      minFans: 0,           color: '#5C636B' },
-  { level: 1, label: 'Local Scene',  minFans: 100,         color: '#5C636B' },
-  { level: 2, label: 'Scene Known',  minFans: 1_000,       color: '#9BA1A8' },
-  { level: 3, label: 'Underground',  minFans: 10_000,      color: '#9BA1A8' },
-  { level: 4, label: 'Emerging',     minFans: 50_000,      color: '#2E8DFF' },
-  { level: 5, label: 'Rising Star',  minFans: 200_000,     color: '#2E8DFF' },
-  { level: 6, label: 'Mainstream',   minFans: 1_000_000,   color: '#2E8DFF' },
-  { level: 7, label: 'Famous',       minFans: 10_000_000,  color: '#FFFFFF' },
-  { level: 8, label: 'Superstar',    minFans: 50_000_000,  color: '#FFFFFF' },
-  { level: 9, label: 'Legend',       minFans: 200_000_000, color: '#D9C77E' },
+  { level: 0, label: 'Unknown',      minFans: 0,           color: '#8A87A8' },
+  { level: 1, label: 'Local Scene',  minFans: 100,         color: '#8A87A8' },
+  { level: 2, label: 'Scene Known',  minFans: 1_000,       color: '#9FB4FF' },
+  { level: 3, label: 'Underground',  minFans: 10_000,      color: '#9FB4FF' },
+  { level: 4, label: 'Emerging',     minFans: 50_000,      color: '#36D6FF' },
+  { level: 5, label: 'Rising Star',  minFans: 200_000,     color: '#36D6FF' },
+  { level: 6, label: 'Mainstream',   minFans: 1_000_000,   color: '#8B6CFF' },
+  { level: 7, label: 'Famous',       minFans: 10_000_000,  color: '#FF4FA3' },
+  { level: 8, label: 'Superstar',    minFans: 50_000_000,  color: '#FF4FA3' },
+  { level: 9, label: 'Legend',       minFans: 200_000_000, color: '#FFCE5C' },
 ] as const;
 
-// Reputation tiers stay semantic (data colors): red → amber → gray → green → gold.
+// Reputation tiers stay semantic: red → amber → lavender → green → gold.
 export const REPUTATION_TIERS = [
-  { min: 0,  max: 20,  label: 'Cancelled',   color: '#E5544B' },
-  { min: 20, max: 35,  label: 'Controversial', color: '#E0A53B' },
-  { min: 35, max: 50,  label: 'Polarizing',  color: '#E0A53B' },
-  { min: 50, max: 65,  label: 'Respected',   color: '#9BA1A8' },
-  { min: 65, max: 80,  label: 'Beloved',     color: '#3FB87F' },
-  { min: 80, max: 101, label: 'Icon',        color: '#D9C77E' },
+  { min: 0,  max: 20,  label: 'Cancelled',   color: '#FF5470' },
+  { min: 20, max: 35,  label: 'Controversial', color: '#FFB347' },
+  { min: 35, max: 50,  label: 'Polarizing',  color: '#FFB347' },
+  { min: 50, max: 65,  label: 'Respected',   color: '#B9B5D6' },
+  { min: 65, max: 80,  label: 'Beloved',     color: '#3BE8A6' },
+  { min: 80, max: 101, label: 'Icon',        color: '#FFCE5C' },
 ] as const;
 
 export const STAT_LABELS: Record<string, string> = {

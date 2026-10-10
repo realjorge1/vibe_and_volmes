@@ -38,6 +38,12 @@ import { getHome } from '../../data/life/homes';
 import { homeAvailability } from '../life/assetEngine';
 import { moveHome } from '../life/assetTick';
 import { pick } from '../../utils/random';
+import { useDramaStore } from '../../store/dramaStore';
+import { replyDm, fillDm } from '../drama/dmEngine';
+import { dmContext } from '../drama/dramaTick';
+import { spawnMoment } from '../drama/publish';
+import { fillText } from '../drama/discourse';
+import { checkIdentityNow } from '../identity/identityTick';
 
 /**
  * Thin action layer for player-initiated Phase 3 decisions made outside
@@ -110,6 +116,8 @@ export type DoActivityResult =
 export function playerDoActivity(activityId: string): DoActivityResult {
   const activity = getLifeActivity(activityId);
   if (!activity) return { ok: false, reason: 'Unknown activity' };
+  // Launchers (the escape) are played on their own screen, not rolled.
+  if (activity.opens || activity.outcomes.length === 0) return { ok: false, reason: 'Open it to play it' };
   const ctx = buildActivityContext();
   const player = usePlayerStore.getState().player;
   if (!ctx || !player) return { ok: false, reason: 'No career in progress' };
@@ -140,7 +148,7 @@ export function playerDoActivity(activityId: string): DoActivityResult {
     playerName: player.artistName,
     npc: npcName,
   });
-  const consequences =
+  const withRival =
     rival && result.consequences.rivalryIntensityDelta
       ? {
           ...result.consequences,
@@ -150,6 +158,22 @@ export function playerDoActivity(activityId: string): DoActivityResult {
           },
         }
       : result.consequences;
+  // A choice that comes back later knows exactly who it was about. Someone
+  // new (the kid at the hospital) gets a name here.
+  const plant = withRival.plantSeed;
+  const newName = plant?.who === 'new' ? pick([...FIRST_NAMES]) : undefined;
+  const consequences = plant
+    ? {
+        ...withRival,
+        plantSeed: {
+          ...plant,
+          name: newName ?? plant.name,
+          note: newName ? plant.note.split('{seed}').join(newName) : plant.note,
+          npcId: plant.who === 'npc' ? npc?.id : plant.npcId,
+          rivalId: plant.who === 'rival' ? rival?.id : plant.rivalId,
+        },
+      }
+    : withRival;
 
   const week = useGameStore.getState().week;
   const applied = applyConsequence(consequences, week);
@@ -176,6 +200,7 @@ export function playerDoActivity(activityId: string): DoActivityResult {
     earned: result.earned,
     reaction: applied.socialReaction,
   });
+  checkIdentityNow();
   saveProgress();
   return { ok: true, result: { ...result, consequences }, posted, met };
 }
@@ -265,6 +290,7 @@ export function playerInteract(personId: string, interactionId: string): Interac
   const posted = result.social ? publishStoryBeat(result.social, storyId) !== null : false;
   useActivityStore.getState().queueReaction(result.consequences.socialReaction ?? 'none', storyId);
 
+  checkIdentityNow();
   saveProgress();
   return {
     ok: true,
@@ -290,6 +316,87 @@ export function playerMoveHome(homeId: HomeId): { ok: true } | { ok: false; reas
   );
   if (!availability.ok) return availability;
   moveHome(homeId, availability.cost);
+  checkIdentityNow();
   saveProgress();
   return { ok: true };
+}
+
+// ─── Drama: DMs ────────────────────────────────────────────────────────────
+
+export type DmReplyResult = { ok: true; line: string | null } | { ok: false; reason: string };
+
+/**
+ * Answer a DM with one of its quick replies. The arc plays forward (their
+ * answer arrives a few seconds later), and the outcome goes through the same
+ * consequence pipeline as events: stats, money, people, a Deck line, and a
+ * public moment when it gets out.
+ */
+export function playerReplyDm(threadId: string, replyId: string): DmReplyResult {
+  const drama = useDramaStore.getState();
+  const thread = drama.getDm(threadId);
+  const player = usePlayerStore.getState().player;
+  const ctx = dmContext();
+  if (!thread || !player || !ctx) return { ok: false, reason: 'Conversation not found' };
+  const res = replyDm(thread, replyId, ctx, Math.random);
+  if (!res) return { ok: false, reason: 'Nothing to reply to' };
+  drama.upsertDm(res.thread);
+
+  const week = ctx.week;
+  const firstName = thread.person.name.replace(/\s*[|].*$/, '').replace(/[^\p{L}\p{N} .'-]/gu, '').trim().split(/\s+/)[0] || thread.person.handle;
+  const fill = (text: string) =>
+    fillText(fillDm(text, thread, ctx), { playerName: player.artistName, gender: player.gender, genre: '', city: player.city, trackTitle: ctx.trackTitle });
+  const out = res.outcome;
+  let line: string | null = null;
+
+  // Flirting while taken leaves screenshots somewhere.
+  if (ctx.partnerName && (thread.kind === 'admirer' || thread.kind === 'celeb-crush' || thread.kind === 'ex') && ['flirt', 'slide', 'reply'].includes(replyId)) {
+    useGameStore.getState().addTag('flirting-in-dms');
+    drama.bumpFlirt();
+  }
+
+  if (out?.consequences) {
+    const c = out.consequences;
+    line = c.flavorText ? fill(c.flavorText) : null;
+    applyConsequence({ ...c, flavorText: line ?? '' }, week);
+  }
+  if (out?.moment) {
+    spawnMoment(out.moment, { name: firstName, partnerName: ctx.partnerName ?? undefined });
+  }
+  if (out?.social) {
+    publishStoryBeat({ ...out.social, text: fill(out.social.text) }, `dm:${thread.arc}`);
+  }
+  if (out?.effect === 'date' || out?.effect === 'friend' || out?.effect === 'producer') {
+    const people = usePeopleStore.getState();
+    const role = out.effect === 'date' ? 'partner' : out.effect;
+    const taken = role === 'partner' && people.people.some((p) => p.role === 'partner');
+    if (!taken && !people.people.some((p) => p.face === thread.person.id)) {
+      people.addPerson({
+        id: newPersonId(),
+        name: firstName,
+        role,
+        title: role === 'partner' ? 'your partner' : role === 'friend' ? 'your friend' : 'your producer',
+        affinity: role === 'partner' ? 35 : 25,
+        traits: role === 'partner' ? ['met-in-dms'] : [],
+        npcId: thread.person.npcId,
+        sinceWeek: week,
+        lastSeenWeek: week,
+        face: thread.person.id,
+        ...(role === 'partner' ? { bond: 'dating' as const } : {}),
+      });
+    }
+  }
+
+  if (line) {
+    const logAs = thread.kind === 'rival' ? 'rivalry' : thread.kind === 'admirer' || thread.kind === 'celeb-crush' || thread.kind === 'ex' ? 'personal' : 'social';
+    useGameStore.getState().addStoryLine(line, logAs, `dm:${thread.arc}`);
+  }
+  useDramaStore.getState().save();
+  saveProgress();
+  return { ok: true, line };
+}
+
+/** Opening a conversation marks it read. */
+export function playerReadDm(threadId: string): void {
+  useDramaStore.getState().markDmRead(threadId);
+  useDramaStore.getState().save();
 }

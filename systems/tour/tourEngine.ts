@@ -99,7 +99,9 @@ export function weeklyTour(bundle: InfluenceBundle, week: number): void {
 
   for (let i = tour.currentStopIndex; i < tour.stops.length; i++) {
     const stop = tour.stops[i];
-    if (stop.week > week || stop.played) break;
+    // A stop is "tonight" during its own week (the artist can play it live);
+    // it settles when that week ends.
+    if (stop.week >= week || stop.played) break;
 
     const venue = getVenue(stop.venueId);
     if (!venue) continue;
@@ -119,11 +121,11 @@ export function weeklyTour(bundle: InfluenceBundle, week: number): void {
       player.stats.talent * 0.2;
     const exhaustion =
       (100 - player.stats.energy) * 0.5 + mental.burnout * 0.5;
-    const performanceScore = clamp(
-      Math.round(stagePower - exhaustion * 0.4 + gaussRand(0, 6)),
-      5,
-      100
-    );
+    // Played live by the artist: their night stands. Otherwise, the auto-sim.
+    const playedLive = typeof stop.liveScore === 'number';
+    const performanceScore = playedLive
+      ? (stop.liveScore as number)
+      : clamp(Math.round(stagePower - exhaustion * 0.4 + gaussRand(0, 6)), 5, 100);
 
     const ticketPrice = 18 + venue.prestige * 1.4;
     const revenue =
@@ -136,7 +138,8 @@ export function weeklyTour(bundle: InfluenceBundle, week: number): void {
       if (inc.requiresControversyProne && !controversyProne) return false;
       return true;
     });
-    const incident = chance(0.55) ? weightedPick(eligible) : null;
+    // A night the artist played live already had its moments on stage.
+    const incident = !playedLive && chance(0.55) ? weightedPick(eligible) : null;
 
     // Apply stop economics + fame.
     bundle.moneyDelta += revenue;

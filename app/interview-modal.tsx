@@ -41,7 +41,7 @@ export default function InterviewModal() {
 
   if (!session) {
     return (
-      <Screen>
+      <Screen tint={COLORS.warning}>
         <View style={styles.center}>
           <Text variant="title" center>
             No interview pending.
@@ -60,7 +60,7 @@ export default function InterviewModal() {
 
   if (done) {
     return (
-      <Screen>
+      <Screen tint={COLORS.warning}>
         <View style={styles.center}>
           <Text variant="label" muted center>
             THE NEXT DAY
@@ -88,7 +88,7 @@ export default function InterviewModal() {
 
   if (!question) {
     return (
-      <Screen>
+      <Screen tint={COLORS.warning}>
         <View style={styles.center}>
           <Button label="Back" onPress={() => router.back()} />
         </View>

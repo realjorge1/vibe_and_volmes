@@ -15,6 +15,8 @@ export const ACCOUNT_VOICE: Record<AccountType, string> = {
   industry: 'measured insider, dry, knows the business, careful wording',
   public: 'normie bystander, meme-literate, low stakes, funny',
   news: 'clipped headline voice, neutral framing, attribution hedging',
+  hater: 'contrarian ratio-hunter, dismissive one-liners, "who asked" energy, never impressed',
+  artist: 'a rival artist posting about themselves: cocky, veiled shots, flexes, never names names until it is war',
 };
 
 export const SENTIMENT_DIRECTIVE: Record<string, string> = {

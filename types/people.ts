@@ -56,6 +56,8 @@ export interface Person {
   otherParentId?: string;
   /** Weekly money while affinity holds (e.g. a Rich Kid's parents). */
   allowance?: number;
+  /** Someone met online: their account id, so their face shows in People. */
+  face?: string;
 }
 
 /** A baby on the way: born on `dueWeek`. */

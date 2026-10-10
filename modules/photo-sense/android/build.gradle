@@ -1,0 +1,24 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.photosense'
+version = '1.0.0'
+
+android {
+  namespace "expo.modules.photosense"
+  defaultConfig {
+    versionCode 1
+    versionName "1.0.0"
+  }
+}
+
+// ML Kit through Google Play services: the models live in Play services and are
+// shared with other apps, so the APK only grows by a few hundred KB.
+dependencies {
+  implementation 'com.google.android.gms:play-services-mlkit-image-labeling:16.0.8'
+  implementation 'com.google.android.gms:play-services-mlkit-face-detection:17.1.0'
+  implementation 'com.google.android.gms:play-services-mlkit-text-recognition:19.0.1'
+  implementation 'com.google.android.gms:play-services-base:18.5.0'
+}

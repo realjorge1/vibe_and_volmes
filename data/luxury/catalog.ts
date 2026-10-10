@@ -54,9 +54,9 @@ export const LUXURY_CATALOG: LuxuryItem[] = [
 
 export const STATUS_TIERS: StatusTier[] = [
   { min: 0,    label: 'Broke & Hungry', color: COLORS.textMuted },
-  { min: 60,   label: 'Getting Money',  color: COLORS.textSecondary },
+  { min: 60,   label: 'Getting Money',  color: COLORS.accent },
   { min: 180,  label: 'Living Lavish',  color: COLORS.primary },
-  { min: 420,  label: 'Certified Rich', color: COLORS.primary },
+  { min: 420,  label: 'Certified Rich', color: COLORS.secondary },
   { min: 800,  label: 'Mogul Status',   color: COLORS.gold },
   { min: 1500, label: 'Untouchable Wealth', color: COLORS.gold },
 ];

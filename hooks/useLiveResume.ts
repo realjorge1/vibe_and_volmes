@@ -3,6 +3,7 @@ import { AppState, type AppStateStatus } from 'react-native';
 import { runLiveResume, runLivePoll } from '../systems/live/liveTick';
 import { useLiveStore } from '../store/liveStore';
 import { LIVE_CONFIG } from '../constants/liveConfig';
+import { ambientTick, resetAmbient } from '../systems/notifications/triggers';
 
 /**
  * Mount once in the game shell. Drives the living-world heartbeat:
@@ -21,6 +22,8 @@ export function useLiveResume(): void {
       appState.current = next;
       if (next === 'active' && prev.match(/inactive|background/)) {
         runLiveResume();
+        // Back on the phone: the little pings start again after a beat.
+        resetAmbient();
       } else if (next.match(/inactive|background/)) {
         // Snapshot the leave time so "away" is measured correctly.
         useLiveStore.getState().markSeen();
@@ -30,6 +33,8 @@ export function useLiveResume(): void {
 
     const poll = setInterval(() => {
       runLivePoll();
+      // While you play, the apps keep living: a follow, a like, a story.
+      ambientTick();
       // Expire toasts past their TTL.
       const { notifications, dismissNotification } = useLiveStore.getState();
       const cutoff = Date.now() - LIVE_CONFIG.NOTIFICATION_TTL_MS;

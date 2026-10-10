@@ -6,7 +6,8 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "vibeandvolumes",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#07060E",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
@@ -22,7 +23,8 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.POST_NOTIFICATIONS"
       ],
       "package": "com.chunaemelum.vibe_and_volumes"
     },
@@ -38,9 +40,9 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#07060E",
           "dark": {
-            "backgroundColor": "#000000"
+            "backgroundColor": "#07060E"
           }
         }
       ],
@@ -51,7 +53,16 @@
           "microphonePermission": "Allow $(PRODUCT_NAME) to record your vocals in the studio."
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow $(PRODUCT_NAME) to show your photos so you can post them in the game. They stay on your phone.",
+          "savePhotosPermission": false,
+          "isAccessMediaLocationEnabled": false,
+          "granularPermissions": ["photo"]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

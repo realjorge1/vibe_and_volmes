@@ -6,20 +6,28 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { COLORS, SPACING } from '../../constants/theme';
+import { SPACING } from '../../constants/theme';
+import { ScreenBackdrop } from '../fx/Backdrop';
 
 interface Props {
   children: React.ReactNode;
   scroll?: boolean;
   padded?: boolean;
+  /** Color of the stage light when this screen paints its own backdrop. */
+  tint?: string;
   style?: ViewStyle;
   contentStyle?: ViewStyle;
 }
 
+/**
+ * A screen on the stage: transparent over the ambient light the tabs share,
+ * or painting its own when it stands alone (modals, the song flow).
+ */
 export function Screen({
   children,
   scroll = false,
   padded = true,
+  tint,
   style,
   contentStyle,
 }: Props) {
@@ -30,26 +38,28 @@ export function Screen({
   );
 
   return (
-    <SafeAreaView style={[styles.safe, style]} edges={['top']}>
-      {scroll ? (
-        <ScrollView
-          style={styles.flex}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {inner}
-        </ScrollView>
-      ) : (
-        inner
-      )}
-    </SafeAreaView>
+    <View style={styles.flex}>
+      <ScreenBackdrop tint={tint} />
+      <SafeAreaView style={[styles.safe, style]} edges={['top']}>
+        {scroll ? (
+          <ScrollView
+            style={styles.flex}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {inner}
+          </ScrollView>
+        ) : (
+          inner
+        )}
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.bg },
+  safe: { flex: 1, backgroundColor: 'transparent' },
   flex: { flex: 1 },
-  padded: { paddingHorizontal: SPACING.lg },
-  // Clearance for the flat bottom tab bar plus breathing room.
-  scrollContent: { paddingBottom: SPACING['3xl'] * 1.8 },
+  padded: { paddingHorizontal: SPACING.lg - 4 },
+  scrollContent: { paddingBottom: SPACING['3xl'] },
 });

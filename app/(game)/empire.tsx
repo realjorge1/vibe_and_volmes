@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { Screen } from '../../components/ui/Screen';
-import { Text } from '../../components/ui/Typography';
+import { ScreenHeader } from '../../components/ui/ScreenHeader';
+import { Orb3D } from '../../components/fx/Orb3D';
 import {
   SegmentedControl,
   type Segment,
@@ -9,13 +10,15 @@ import {
 import { OverviewSection } from '../../components/empire/OverviewSection';
 import { BusinessSection } from '../../components/empire/BusinessSection';
 import { BadgesSection } from '../../components/empire/BadgesSection';
-import { SPACING } from '../../constants/theme';
+import { MogulSection } from '../../components/empire/MogulSection';
+import { COLORS, SPACING } from '../../constants/theme';
 
-type Tab = 'overview' | 'business';
+type Tab = 'overview' | 'business' | 'mogul';
 
 const SEGMENTS: readonly Segment<Tab>[] = [
   { key: 'overview', label: 'Overview' },
   { key: 'business', label: 'Business' },
+  { key: 'mogul', label: 'Mogul' },
 ];
 
 /**
@@ -28,9 +31,13 @@ export default function Empire() {
 
   return (
     <Screen scroll>
-      <Text variant="title" style={styles.title}>
-        Empire
-      </Text>
+      <ScreenHeader
+        eyebrow="YOUR EMPIRE"
+        title="Empire"
+        subtitle="Stage, legacy, labels, tours and PR."
+        accent={COLORS.gold}
+        right={<Orb3D size={52} color={COLORS.gold} icon="trophy" />}
+      />
       <SegmentedControl
         segments={SEGMENTS}
         value={tab}
@@ -44,11 +51,11 @@ export default function Empire() {
         </>
       )}
       {tab === 'business' && <BusinessSection />}
+      {tab === 'mogul' && <MogulSection />}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  title: { marginTop: SPACING.base, marginBottom: SPACING.md },
   segment: { marginBottom: SPACING.lg },
 });

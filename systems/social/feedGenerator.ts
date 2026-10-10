@@ -15,17 +15,24 @@ import { platformOf } from '../../data/social/platforms';
 import { buildMedia } from '../../data/social/mediaTemplates';
 import { getReputationTier } from '../../utils/statHelpers';
 import { getGenre } from '../../data/genres';
-import { pick, randInt, weightedPickKey, shuffle, chance } from '../../utils/random';
+import { pick, randInt, weightedPickKey, chance } from '../../utils/random';
 import {
   deriveFanbase,
   fanbaseSentimentWeights,
   accountToSegment,
 } from './fanbase';
 import {
+  byAttention,
   computeEngagement,
   controversyFromReactions,
+  withFameTone,
 } from './platformAlgorithms';
 import { trendAlignmentFor } from './trendEngine';
+import type { DiscourseInput } from '../drama/discourse';
+import { dramaPosts, dramaShare } from '../drama/feed';
+import { interleave, laneCounts, type LaneInput } from './lanes';
+import { everydayPosts } from './everyday';
+import { celebPosts } from './celebFeed';
 
 export interface FeedInput {
   player: Player;
@@ -36,6 +43,10 @@ export interface FeedInput {
   /** This week's trend board — drives per-post discovery reach. */
   trending?: TrendingTopic[];
   postCount?: number;
+  /** The drama layer's view of the artist's week (moments, rival, romance). */
+  discourse?: DiscourseInput | null;
+  /** The rest of the internet: everyday life and other artists (sized by fame, see lanes.ts). */
+  lanes?: LaneInput | null;
 }
 
 const ACCOUNT_SENTIMENT_BIAS: Record<NpcAccount['accountType'], PostSentiment[]> = {
@@ -47,6 +58,8 @@ const ACCOUNT_SENTIMENT_BIAS: Record<NpcAccount['accountType'], PostSentiment[]>
   industry: ['news', 'neutral', 'positive'],
   public: ['neutral', 'meme', 'positive'],
   news: ['news', 'news', 'neutral'],
+  hater: ['hostile', 'critical', 'shade'],
+  artist: ['shade', 'hype', 'shade'],
 };
 
 /** Reaction from the last week's decisions skews the whole feed. */
@@ -141,7 +154,7 @@ export function generateFeed(input: FeedInput): SocialPost[] {
     dramaHeat: controversyLevel,
   });
 
-  const baseWeights = reactionSentimentWeights(recentReactions);
+  let baseWeights = reactionSentimentWeights(recentReactions);
   const repBias = reputationSentimentBias(player.stats.reputation);
   for (const [k, v] of Object.entries(repBias)) {
     baseWeights[k as PostSentiment] += v ?? 0;
@@ -151,9 +164,15 @@ export function generateFeed(input: FeedInput): SocialPost[] {
     // Scale so segment voice meaningfully colors, but doesn't dominate, the mood.
     baseWeights[k as PostSentiment] += (v ?? 0) * 1.4;
   }
+  baseWeights = withFameTone(baseWeights, player.stats.fans);
 
-  const target = input.postCount ?? randInt(10, 16);
-  const accountPool = shuffle(NPC_ACCOUNTS);
+  const total = input.postCount ?? randInt(10, 16);
+  // Part of the week's feed is about the specific drama in the artist's life.
+  const dramaCount = input.discourse ? Math.round(total * dramaShare(player.stats.fans)) : 0;
+  const target = total - dramaCount;
+  // Who's talking depends on who the artist is: critics and listeners find an
+  // unknown first, the big pages come later.
+  const accountPool = byAttention(NPC_ACCOUNTS, player.stats.fans);
   const posts: SocialPost[] = [];
 
   for (let i = 0; i < target; i++) {
@@ -216,5 +235,25 @@ export function generateFeed(input: FeedInput): SocialPost[] {
   }
 
   // Rank by views — the platform-agnostic measure of how far a post traveled.
-  return posts.sort((a, b) => (b.views ?? b.likes) - (a.views ?? a.likes));
+  if (input.discourse && dramaCount > 0) {
+    posts.push(
+      ...dramaPosts(input.discourse, {
+        player,
+        week,
+        count: dramaCount,
+        controversy: controversyLevel,
+        idPrefix: `drama-${week}`,
+      })
+    );
+  }
+
+  const about = posts.sort((a, b) => (b.views ?? b.likes) - (a.views ?? a.likes));
+  if (!input.lanes) return about;
+  // Most of a feed isn't about the artist: the rest of the internet goes around their posts.
+  const n = laneCounts(about.length, player.stats.fans);
+  const others = [
+    ...everydayPosts({ week, baseYear: input.lanes.baseYear, city: input.lanes.city, count: n.everyday, idPrefix: `ev-${week}`, real: input.lanes.real }),
+    ...(input.lanes.celeb ? celebPosts(input.lanes.celeb, { count: n.celeb, idPrefix: `cl-${week}` }) : []),
+  ];
+  return interleave(about, others);
 }

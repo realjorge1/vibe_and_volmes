@@ -2,9 +2,10 @@ import { useCallback, useRef } from 'react';
 import type { EventChoice, GameEvent, SocialReactionType } from '../types/events';
 import { useGameStore } from '../store/gameStore';
 import { applyConsequence } from '../systems/events/consequenceApplicator';
-import { getAvailableChoices } from '../systems/events/eventEngine';
+import { getAvailableChoices, hiddenByTrait } from '../systems/events/eventEngine';
 import { runWeekTransition } from '../systems/weekEngine';
 import { saveProgress } from '../systems/persistence';
+import { checkIdentityNow, consumeSeed } from '../systems/identity/identityTick';
 
 /**
  * Drives the week loop: resolving each decision, then rolling the world
@@ -33,8 +34,9 @@ export function useWeekEngine() {
     ? getAvailableChoices(currentEvent, playerTags)
     : [];
 
+  // Choices only another personality would see stay hidden, not locked.
   const lockedChoices: EventChoice[] = currentEvent
-    ? currentEvent.choices.filter((c) => !availableChoices.includes(c))
+    ? currentEvent.choices.filter((c) => !availableChoices.includes(c) && !hiddenByTrait(c, playerTags))
     : [];
 
   const isWeekComplete = !currentEvent;
@@ -62,6 +64,10 @@ export function useWeekEngine() {
       flavorText: result.flavorText,
       category: event.category,
     });
+    // The past came back and this was its payoff: the seed is spent.
+    if (event.seedId) consumeSeed(event.seedId);
+    // A choice can fulfil a want (or make a fear come true) on the spot.
+    checkIdentityNow();
     // Persist the decision now, so a relaunch mid-week resumes here.
     saveProgress();
   }, []);

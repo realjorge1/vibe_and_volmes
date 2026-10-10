@@ -1,5 +1,7 @@
 import type { ActivityCategory, LifeActivity } from '../../types/life';
 import type { EventCategory } from '../../types/events';
+import { DRAMA_ACTIVITIES } from './dramaActivities';
+import { JAIL_ACTIVITIES } from './jailActivities';
 
 /**
  * The Life tab's Activities menu, as data. Each activity costs energy (and
@@ -27,6 +29,9 @@ export const ACTIVITY_CATEGORIES: readonly ActivityCategoryMeta[] = [
   { id: 'love', label: 'Love', icon: 'heart-outline', logAs: 'personal' },
   { id: 'money', label: 'Money', icon: 'cash-outline', logAs: 'opportunity' },
   { id: 'risky', label: 'Risky', icon: 'flame-outline', logAs: 'drama' },
+  { id: 'beef', label: 'Beef', icon: 'flash-outline', logAs: 'rivalry' },
+  { id: 'charity', label: 'Give back', icon: 'heart-circle-outline', logAs: 'social' },
+  { id: 'jail', label: 'Inside', icon: 'lock-closed-outline', logAs: 'personal' },
 ];
 
 export const LIFE_ACTIVITIES: LifeActivity[] = [
@@ -594,6 +599,12 @@ export const LIFE_ACTIVITIES: LifeActivity[] = [
           addTags: ['party-reputation'],
           socialReaction: 'negative',
           flavorText: 'The afterparty got messy. So did the photos.',
+          plantSeed: {
+            kind: 'wild-night',
+            after: [10, 24],
+            who: 'npc',
+            note: 'A messy night at an afterparty with {npc}.',
+          },
         },
         social: {
           sentiment: 'shade',
@@ -824,6 +835,12 @@ export const LIFE_ACTIVITIES: LifeActivity[] = [
         consequences: {
           moneyDelta: 1_000,
           flavorText: 'Your investment went nowhere. At least it did not go down.',
+          plantSeed: {
+            kind: 'investment',
+            after: [12, 36],
+            who: 'none',
+            note: 'You put money into a startup a stranger at a party swore by.',
+          },
         },
       },
       {
@@ -854,6 +871,7 @@ export const LIFE_ACTIVITIES: LifeActivity[] = [
     energyCost: 5,
     moneyCost: 500,
     cooldownWeeks: 6,
+    npc: 'world',
     outcomes: [
       {
         id: 'paid-back',
@@ -861,7 +879,7 @@ export const LIFE_ACTIVITIES: LifeActivity[] = [
         consequences: {
           statChanges: [{ stat: 'mentalHealth', delta: 2 }],
           moneyDelta: 550,
-          flavorText: 'Your friend paid you back, plus fifty and a hug.',
+          flavorText: '{npc} paid you back, plus fifty and a hug.',
         },
       },
       {
@@ -869,7 +887,13 @@ export const LIFE_ACTIVITIES: LifeActivity[] = [
         weight: 4,
         consequences: {
           statChanges: [{ stat: 'mentalHealth', delta: -3 }],
-          flavorText: 'The friend you lent money to now only replies to your texts with memes.',
+          flavorText: 'You lent {npc} $500. They now only reply to your texts with memes.',
+          plantSeed: {
+            kind: 'lent-money',
+            after: [10, 30],
+            who: 'npc',
+            note: 'You lent {npc} $500. They never paid it back.',
+          },
         },
       },
       {
@@ -878,7 +902,7 @@ export const LIFE_ACTIVITIES: LifeActivity[] = [
         consequences: {
           statChanges: [{ stat: 'mentalHealth', delta: 4 }],
           moneyDelta: 1_500,
-          flavorText: 'Your friend\'s food truck took off. They insisted on paying you back triple.',
+          flavorText: '{npc}\'s food truck took off. They insisted on paying you back triple.',
         },
       },
     ],
@@ -953,6 +977,12 @@ export const LIFE_ACTIVITIES: LifeActivity[] = [
           fansDelta: 1_500,
           socialReaction: 'viral',
           flavorText: 'You won the fight. Somebody filmed it. Your name is trending for the wrong reason.',
+          plantSeed: {
+            kind: 'club-fight',
+            after: [4, 14],
+            who: 'none',
+            note: 'You won a fight outside a club. It was filmed.',
+          },
           historyRecord: {
             kind: 'scandal',
             summary: 'got into a filmed fight outside a club',
@@ -993,7 +1023,8 @@ export const LIFE_ACTIVITIES: LifeActivity[] = [
           moneyDelta: -1_500,
           addTags: ['arrest-record'],
           socialReaction: 'cancel',
-          flavorText: 'The fight ended in handcuffs. Your lawyer is not returning your calls quickly enough.',
+          legalCharge: 'assault',
+          flavorText: 'The fight ended in handcuffs and an assault charge. You need a lawyer, fast.',
           historyRecord: {
             kind: 'scandal',
             summary: 'was arrested after a fight',
@@ -1035,6 +1066,12 @@ export const LIFE_ACTIVITIES: LifeActivity[] = [
           rivalryIntensityDelta: { delta: 15 },
           socialReaction: 'viral',
           flavorText: 'Your diss on {npc} landed. The whole internet picked a side, and most picked yours.',
+          plantSeed: {
+            kind: 'dissed-rival',
+            after: [16, 40],
+            who: 'rival',
+            note: 'You dissed {npc} on a record, and it landed.',
+          },
           historyRecord: {
             kind: 'feud',
             summary: 'dropped a diss track aimed at {npc}',
@@ -1161,6 +1198,8 @@ export const LIFE_ACTIVITIES: LifeActivity[] = [
       },
     ],
   },
+  ...DRAMA_ACTIVITIES,
+  ...JAIL_ACTIVITIES,
 ];
 
 export function getLifeActivity(id: string): LifeActivity | undefined {

@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, type ViewStyle } from 'react-native';
-import { COLORS, SPACING } from '../../constants/theme';
+import { type ViewStyle } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SPACING } from '../../constants/theme';
 
 interface Props {
   /** Vertical margin around the rule. */
@@ -8,18 +9,14 @@ interface Props {
   style?: ViewStyle;
 }
 
-/** A single hairline rule — the primary separator in the Tesla-OS look. */
+/** A hairline that fades out at both ends. */
 export function Divider({ spacing = SPACING.base, style }: Props) {
   return (
-    <View
-      style={[
-        {
-          height: 1,
-          backgroundColor: COLORS.border,
-          marginVertical: spacing,
-        },
-        style,
-      ]}
+    <LinearGradient
+      colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.16)', 'rgba(255,255,255,0)']}
+      start={{ x: 0, y: 0.5 }}
+      end={{ x: 1, y: 0.5 }}
+      style={[{ height: 1, marginVertical: spacing }, style]}
     />
   );
 }

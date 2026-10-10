@@ -15,7 +15,11 @@ import type { SocialReactionType } from '../types/events';
 import { generateWeekEvents, type EventContext } from './events/eventEngine';
 import { updateWeeklyCharts } from './charts/chartEngine';
 import { buildWeeklyChartContext } from './charts/chartContext';
+import { releaseProgressNote, rollBreakout } from './music/releaseCurve';
 import { generateFeed } from './social/feedGenerator';
+import { laneInput, syncCastLinks } from './social/celebContext';
+import { everydayTrends } from './social/everyday';
+import { celebTrends } from './social/celebFeed';
 import { generateTrending, trendStreamMultiplier } from './social/trendEngine';
 import { maybeIntroduceRival } from './relationships/relationshipEngine';
 import { runPhase3Week } from './simulation/phase3Tick';
@@ -27,12 +31,25 @@ import { ageAtWeek, birthdayBeat, birthdayLines, lifeStageForAge } from './life/
 import { useActivityStore } from '../store/activityStore';
 import { usePeopleStore } from '../store/peopleStore';
 import { ensureFamily, runPeopleWeek } from './life/peopleTick';
-import { newcomerCandidates, ownedAssetViews } from './life/lifeContext';
+import { currentRival, newcomerCandidates, ownedAssetViews } from './life/lifeContext';
 import { useStatusStore } from '../store/statusStore';
 import { getHome } from '../data/life/homes';
 import { ensureHome, runAssetWeek } from './life/assetTick';
 import { fillFinalLine, rollEnding } from './life/endingEngine';
 import { saveAll } from './persistence';
+import { notifyNewWeek } from './notifications/triggers';
+import { runDramaWeek } from './drama/dramaTick';
+import { discourseInput } from './drama/publish';
+import { useIdentityStore } from '../store/identityStore';
+import { useLegalStore } from '../store/legalStore';
+import { useMogulStore } from '../store/mogulStore';
+import { getCharge } from '../data/legal/charges';
+import { careerYear, isHolidaySeason, yearWeek } from './calendar/calendar';
+import { runCalendarWeek, startCalendar, updateChartBoard } from './calendar/calendarTick';
+import { runIdentityWeek, startIdentity } from './identity/identityTick';
+import { runLegalWeek } from './legal/legalTick';
+import { buybackPrice, heldMasters } from './music/royalties';
+import { injectLegends, legendViews } from './meta/legends';
 
 export function buildEventContext(): EventContext {
   const player = usePlayerStore.getState().player!;
@@ -41,7 +58,31 @@ export function buildEventContext(): EventContext {
   const career = useCareerStore.getState();
   const culture = getCultureBias();
   const age = ageAtWeek(player.startAge, game.week);
+  const identity = useIdentityStore.getState();
+  const legalCase = useLegalStore.getState().activeCase;
+  const mogul = useMogulStore.getState();
+  const world = useWorldStore.getState().world;
   return {
+    seeds: identity.seeds,
+    npcStageOf: (id: string) => world?.npcs[id]?.stage,
+    yearWeek: yearWeek(game.week),
+    careerYear: careerYear(game.week),
+    inJail: legalCase?.stage === 'jailed',
+    casePending: legalCase?.stage === 'charged',
+    chargeLabel: legalCase ? getCharge(legalCase.chargeId)?.label ?? null : null,
+    eraPersona: identity.currentEra()?.persona ?? null,
+    comebackActive: identity.comeback !== null,
+    legends: legendViews(),
+    ownsLabel: mogul.label !== null,
+    labelName: mogul.label?.name ?? null,
+    signees: mogul.activeRoster().map((r) => ({
+      npcId: r.npcId,
+      name: r.name,
+      stage: world?.npcs[r.npcId]?.stage ?? r.lastStage,
+    })),
+    labelOwnsMasters: heldMasters(music.discography).length > 0,
+    mastersPrice: buybackPrice(music.discography),
+    playerName: player.artistName,
     age,
     lifeStage: lifeStageForAge(age).id,
     people: usePeopleStore.getState().people,
@@ -49,6 +90,7 @@ export function buildEventContext(): EventContext {
     assets: ownedAssetViews(),
     homeId: useStatusStore.getState().homeId ?? 'shared-apartment',
     homeTitle: getHome(useStatusStore.getState().homeId ?? 'shared-apartment').title,
+    rival: currentRival(),
     money: player.money,
     stats: player.stats,
     week: game.week,
@@ -93,8 +135,11 @@ export function refreshSocial(
     (t) => t.includes('beef') || t.includes('feud')
   );
 
+  // The named artists keep living the same world artist's life from week to week.
+  syncCastLinks();
+  const lanes = laneInput();
   // Trends first — the feed reads them so on-trend posts get discovery reach.
-  const trending = generateTrending({
+  const own = generateTrending({
     player,
     week: game.week,
     recentReactions,
@@ -102,6 +147,11 @@ export function refreshSocial(
     latestTrack,
     hasActiveBeef,
   });
+  // The board also carries the world's trends (finals, finales, other artists): an
+  // unknown artist's board is mostly the world, a star's is mostly them.
+  const trending = lanes
+    ? [...own, ...everydayTrends(game.week, lanes.baseYear), ...celebTrends(lanes.celeb)].sort((a, b) => b.volume - a.volume).slice(0, 10)
+    : own;
   const posts = generateFeed({
     player,
     week: game.week,
@@ -109,6 +159,8 @@ export function refreshSocial(
     recentEventIds,
     latestTrack,
     trending,
+    discourse: discourseInput(),
+    lanes,
   });
 
   social.setFeed(posts);
@@ -133,6 +185,9 @@ const WORLD_WARMUP_WEEKS = 8;
 export function bootstrapWorld(seed: number): void {
   const world = useWorldStore.getState();
   world.initWorld(seed);
+  // Past lives are part of this world from the start: legends still working,
+  // estates still releasing.
+  injectLegends(0);
   world.advanceWeeks(WORLD_WARMUP_WEEKS);
   world.saveWorld();
 }
@@ -148,6 +203,9 @@ export function initializeFirstWeek(): void {
   // The family and a home exist from the first week, before its first slate.
   ensureFamily();
   ensureHome(true);
+  // The year begins, and the artist starts out wanting things.
+  startCalendar(useGameStore.getState().week);
+  startIdentity();
 
   const ctx = buildEventContext();
   useGameStore.getState().setActiveEvents(generateWeekEvents(ctx));
@@ -200,21 +258,32 @@ export function runWeekTransition(
     )
   );
 
-  // 2. Decay catalog streams + recompute charts for the upcoming week.
+  // 2. Move catalog streams one week along + recompute charts for the
+  //    upcoming week. New songs build by word of mouth before they fade, and
+  //    an upcoming artist's song can break out while it builds.
   //    Trends → charts: a hot song/meme trend on last week's board lifts the
   //    latest track's streams before the chart curve is applied, so cultural
   //    momentum shows up as chart movement.
   const prevTrending = useSocialStore.getState().trending;
   const latest = music.getLatestTrack();
   const trendMult = trendStreamMultiplier(prevTrending, latest, game.week + 1);
-  const discography =
-    trendMult > 1 && latest
-      ? music.discography.map((t) =>
-          t.id === latest.id
-            ? { ...t, weeklyStreams: Math.round(t.weeklyStreams * trendMult) }
-            : t
-        )
-      : music.discography;
+  // Holiday songs come back every season (and a little bigger each year).
+  const holiday = isHolidaySeason(game.week + 1);
+  const discography = music.discography.map((t) => {
+    const seasonal =
+      holiday && t.seasonal === 'holiday' && game.week + 1 - t.releasedAtWeek >= 3
+        ? {
+            ...t,
+            weeklyStreams: Math.max(t.weeklyStreams, Math.round(t.totalStreams * 0.12)),
+            status: t.status === 'forgotten' || t.status === 'classic' ? ('fading' as const) : t.status,
+          }
+        : t;
+    const lifted =
+      trendMult > 1 && t.id === latest?.id
+        ? { ...seasonal, weeklyStreams: Math.round(seasonal.weeklyStreams * trendMult) }
+        : seasonal;
+    return rollBreakout(lifted, game.week + 1 - t.releasedAtWeek) ?? lifted;
+  });
   // Full multi-factor recompute: each track's decayed streams blend with this
   // week's live world state (reputation, label backing, trend) plus its own
   // persisted release factors. The trend lift doubles as the latest track's
@@ -231,6 +300,22 @@ export function runWeekTransition(
   for (const entry of chartUpdate.entries) {
     music.addChartEntry(entry);
   }
+  // Fans arrive with the plays, week by week, not all on release day.
+  if (chartUpdate.fansGained > 0) {
+    player.updateStats([{ stat: 'fans', delta: chartUpdate.fansGained }]);
+  }
+  const releaseNotes: string[] = [];
+  for (const next of chartUpdate.tracks) {
+    const prev = music.discography.find((t) => t.id === next.id);
+    if (!prev || prev === next) continue;
+    const position = chartUpdate.entries.find((e) => e.trackId === next.id)?.position ?? null;
+    const fansWon = (next.fansEarned ?? 0) - (prev.fansEarned ?? 0);
+    // Breakouts and chart moves for any song; plain growth for the latest only.
+    const note = releaseProgressNote(prev, next, position, fansWon);
+    if (note && (note.kind !== 'building' || next.id === latest?.id)) {
+      releaseNotes.push(note.text);
+    }
+  }
 
   // 3. Organic relationship growth.
   maybeIntroduceRival(current);
@@ -238,6 +323,7 @@ export function runWeekTransition(
   // 4. Advance the clock.
   game.advanceWeek();
   const newWeek = useGameStore.getState().week;
+  useGameStore.getState().addWeekSummaryNotes(releaseNotes);
 
   // 4b. Birthdays lead the new week in the Deck, plus the life stage the
   //     artist just entered, if any. Age is derived from the week.
@@ -245,6 +331,10 @@ export function runWeekTransition(
   if (birthday) {
     useGameStore.getState().addWeekSummaryNotes(birthdayLines(birthday), 'personal');
   }
+
+  // 4c. The law moves first: verdicts land, sentences end, fugitives run.
+  //     Everything after sees whether the artist is inside.
+  runLegalWeek(newWeek);
 
   // 5. Phase 3 ecosystem tick: labels, tours, rivalries, PR, career arc,
   //    mental health, dynamic history — all resolved through the shared
@@ -260,12 +350,32 @@ export function runWeekTransition(
     useGameStore.getState().addWeekSummaryNotes([`🌍 ${worldEvents[0].headline}`]);
   }
 
+  // 5b'. The chart board turns over: the artist's songs among the world's
+  //      releases, and the chart day reveal when something moved.
+  updateChartBoard(newWeek, chartUpdate.entries, worldEvents);
+
   // 5c. The artist's personal life: neglect, allowances, births, partners
   //     walking out, and headlines about the people they know.
   runPeopleWeek(newWeek, worldEvents);
 
   // 5d. What the artist owns costs upkeep; where they live moves their mood.
   runAssetWeek(newWeek);
+
+  // 5e. The artist's public life: the rival war gets scored, the inbox fills
+  //     up, the tabloids look for something. Before events and the feed, so
+  //     both can see it.
+  const dramaNotes = runDramaWeek(newWeek);
+  if (dramaNotes.length > 0) {
+    useGameStore.getState().addWeekSummaryNotes(dramaNotes, 'drama');
+  }
+
+  // 5f. The music year: lineup, festival, nominations, award night, the
+  //     holidays, Wrapped.
+  runCalendarWeek(newWeek);
+
+  // 5g. Who the artist is: wants settle and refill, traits are earned, the
+  //     dream is checked, the past ripens, the challenge advances.
+  runIdentityWeek();
 
   // 6. Stage next week's events (now aware of Phase 3 state).
   const ctx = buildEventContext();
@@ -274,6 +384,8 @@ export function runWeekTransition(
   // 7. Regenerate the social world reflecting what just happened,
   //    including the dramatic beats Phase 3 produced.
   refreshSocial(recentReactions, [...recentEventIds, ...phase3.socialBeats]);
+  // 7b. The artist's phone buzzes with the posts worth a push.
+  notifyNewWeek();
 
   // 8. Phase 4: async AI immersion pass. Fire-and-forget — the template
   //    feed is already live; high-impact posts get rewritten in-place when

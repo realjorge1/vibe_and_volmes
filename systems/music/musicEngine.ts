@@ -4,6 +4,8 @@ import { getGenre } from '../../data/genres';
 import { TRACK_QUALITY_WEIGHTS } from '../../constants/gameConfig';
 import { generateTrackTitle } from '../../utils/nameGenerator';
 import { clamp, gaussRand, chance, randInt } from '../../utils/random';
+import { fameReach } from '../../utils/statHelpers';
+import { AUDIENCE_FLOOR, isUpcoming, planRelease } from './releaseCurve';
 import {
   getChartPosition,
   computeChartScore,
@@ -73,15 +75,20 @@ export function createTrack(
   };
 }
 
-/** Did the record catch lightning? Genre virality + quality + luck. */
-export function checkViral(track: Track, player: Player): boolean {
+/** Chance the record catches lightning: genre virality + quality + luck. */
+export function viralChance(track: Track, player: Player): number {
   const genre = getGenre(player.genre);
   const p =
     (genre.viralPotential / 100) *
     (track.quality / 100) *
     (0.6 + track.originality / 200) *
     (player.stats.charisma / 80 + 0.4);
-  return chance(clamp(p, 0.01, 0.6));
+  return clamp(p, 0.01, 0.6);
+}
+
+/** Did the record catch lightning? */
+export function checkViral(track: Track, player: Player): boolean {
+  return chance(viralChance(track, player));
 }
 
 function receptionFromScore(score: number, viral: boolean): ReleaseReception {
@@ -103,12 +110,25 @@ const RECEPTION_MESSAGE: Record<ReleaseReception, string> = {
 };
 
 /**
+ * Nobody knows an upcoming artist yet: the drop is a few blogs and early
+ * listeners, and the numbers come later if the song is good.
+ */
+const UPCOMING_MESSAGE: Record<ReleaseReception, string> = {
+  flop: 'Barely a ripple. A handful of plays, and the blogs passed on it.',
+  mixed: 'A few blogs gave it a spin. Reviews are split, and the plays are trickling in.',
+  solid: 'Critics are kind to it. The numbers are small for now. Give it time to find people.',
+  hit: 'The reviews are glowing. Nobody knows your name yet, but word is starting to spread.',
+  smash: 'The reviews are glowing. Nobody knows your name yet, but word is starting to spread.',
+  viral: 'It went viral. The internet has fully lost it.',
+};
+
+/**
  * Optional release-plan modifiers (collaborators, marketing, rollout) supplied
  * by the produced-song pipeline. The quick-drop path omits them and falls back
  * to the streams-only chart curve, so its behavior is unchanged.
  */
 export interface ReleaseChartOpts {
-  /** First-week stream multiplier from marketing + collabs + rollout. */
+  /** Audience multiplier from marketing + collabs + rollout. */
   streamMultiplier?: number;
   /** Chart factors known at release (everything except streams). */
   chartFactors?: Omit<ChartFactorInputs, 'weeklyStreams'>;
@@ -118,6 +138,8 @@ export interface ReleaseChartOpts {
     marketingSeed?: number;
     collabReach?: number;
   };
+  /** Points with the critics from who the artist is (traits, era). */
+  criticsBonus?: number;
 }
 
 export function simulateRelease(
@@ -126,13 +148,20 @@ export function simulateRelease(
   opts?: ReleaseChartOpts
 ): ReleaseResult {
   const genre = getGenre(player.genre);
-  const viral = checkViral(track, player);
+  const fans = player.stats.fans;
+  const upcoming = isUpcoming(fans);
+  // An established artist's fans can make a record go viral on release day.
+  // An upcoming artist's song has to be found first, so it can only break out
+  // later, while it builds (see releaseCurve.rollBreakout).
+  const pViral = viralChance(track, player);
+  const viral = !upcoming && chance(pViral);
 
   const criticsScore = clamp(
     Math.round(
       track.quality * 0.5 +
         track.originality * 0.3 +
         player.stats.industryRespect * 0.2 +
+        (opts?.criticsBonus ?? 0) +
         gaussRand(0, 7)
     ),
     1,
@@ -147,26 +176,36 @@ export function simulateRelease(
     100
   );
 
-  // Streams scale with existing fanbase, appeal, and genre reach — then the
-  // release plan (marketing/collab/rollout) lifts the first week.
-  const fanBase = Math.max(player.stats.fans, 200);
-  const viralMult = viral ? randInt(8, 25) : 1;
+  // The song's full weekly audience scales with the fanbase, appeal and genre
+  // reach, lifted by the release plan (marketing/collab/rollout). Only part of
+  // it shows up on release week; the rest builds (or doesn't) week by week.
+  const fanBase = Math.max(fans, AUDIENCE_FLOOR);
   const planMult = Math.max(1, opts?.streamMultiplier ?? 1);
-  const streamCount = Math.round(
+  const potential =
     fanBase *
-      (4 + (commercialScore / 100) * 18) *
-      (1 + genre.viralPotential / 20) *
-      viralMult *
-      planMult *
-      (0.7 + Math.random() * 0.6)
-  );
+    (4 + (commercialScore / 100) * 18) *
+    (1 + genre.viralPotential / 20) *
+    planMult *
+    (0.7 + Math.random() * 0.6);
 
-  const fansGained = Math.round(
-    streamCount * (0.01 + (track.replayValue / 100) * 0.05) +
-      (viral ? fanBase * randInt(1, 4) : 0)
-  );
+  const plan = planRelease({
+    fans,
+    track,
+    conversion: 0.01 + (track.replayValue / 100) * 0.05,
+    viralMult: viral ? randInt(2, 5) : 1,
+    breakoutChance: upcoming ? pViral : 0,
+  });
+  const streamCount = Math.round(potential * plan.opening);
+  const fansGained = Math.round(streamCount * plan.momentum.fansPerStream);
 
-  const reception = receptionFromScore(commercialScore, viral);
+  // Critics set the tone for a name nobody knows; for a known one the numbers
+  // do. And no unknown has a smash on day one.
+  const reach = fameReach(fans);
+  let reception = receptionFromScore(
+    commercialScore * reach + criticsScore * (1 - reach),
+    viral
+  );
+  if (upcoming && reception === 'smash') reception = 'hit';
 
   // Multi-factor chart position when the release plan provides the factors;
   // otherwise the legacy streams-only curve.
@@ -196,13 +235,16 @@ export function simulateRelease(
       producerReputation: opts?.persist?.producerReputation,
       marketingSeed: opts?.persist?.marketingSeed,
       collabReach: opts?.persist?.collabReach,
+      momentum: plan.momentum,
+      fansEarned: fansGained,
+      criticsScore,
     },
     chartPosition,
     fansGained,
     reception,
     streamCount,
     criticsScore,
-    message: RECEPTION_MESSAGE[reception],
+    message: (upcoming ? UPCOMING_MESSAGE : RECEPTION_MESSAGE)[reception],
     chartScore: chartScoreValue,
     chartFactors,
   };

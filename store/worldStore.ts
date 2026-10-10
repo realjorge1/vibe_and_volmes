@@ -35,6 +35,13 @@ interface WorldStoreActions {
    */
   advanceWeeks: (n: number) => WorldEvent[];
   getNpc: (id: string) => Npc | undefined;
+  /**
+   * Change one NPC (a label's marketing push, a past life added to the
+   * world). The engine stays pure; this is the store-level escape hatch.
+   */
+  updateNpc: (id: string, update: (npc: Npc) => Npc) => void;
+  /** Add NPCs that didn't come from generation (past lives). */
+  addNpcs: (npcs: Npc[]) => void;
   /** Recent newsworthy events, biggest first. */
   recentEvents: (limit?: number) => WorldEvent[];
   summary: () => WorldSummary | null;
@@ -74,6 +81,28 @@ export const useWorldStore = create<WorldStore>((set, get) => ({
 
   getNpc(id) {
     return get().world?.npcs[id];
+  },
+
+  updateNpc(id, update) {
+    const { world } = get();
+    const npc = world?.npcs[id];
+    if (!world || !npc) return;
+    set({ world: { ...world, npcs: { ...world.npcs, [id]: update(npc) } } });
+  },
+
+  addNpcs(npcs) {
+    const { world } = get();
+    if (!world || npcs.length === 0) return;
+    const fresh = npcs.filter((n) => !world.npcs[n.id]);
+    if (fresh.length === 0) return;
+    const added = Object.fromEntries(fresh.map((n) => [n.id, n]));
+    set({
+      world: {
+        ...world,
+        npcs: { ...world.npcs, ...added },
+        npcIds: [...world.npcIds, ...fresh.map((n) => n.id)],
+      },
+    });
   },
 
   recentEvents(limit = 20) {

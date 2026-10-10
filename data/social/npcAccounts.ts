@@ -47,6 +47,16 @@ export const NPC_ACCOUNTS: NpcAccount[] = [
   { id: 'public-2', username: 'Just Vibin', handle: 'justvibinn__', accountType: 'public', followers: 89, isVerified: false, preferredPlatforms: ['flashpic', 'chirper'] },
   { id: 'public-3', username: 'Average Listener', handle: 'avglistener99', accountType: 'public', followers: 340, isVerified: false, preferredPlatforms: ['chirper'] },
 
+  // Meme pages (the internet's loudest bystanders)
+  { id: 'public-4', username: 'Music Memes Daily', handle: 'musicmemesdaily', accountType: 'public', followers: 640000, isVerified: false, preferredPlatforms: ['flashpic', 'tunetok', 'chirper'] },
+  { id: 'public-5', username: 'Unhinged Music Takes', handle: 'unhingedmusictakes', accountType: 'public', followers: 210000, isVerified: false, preferredPlatforms: ['chirper', 'flashpic'] },
+
+  // Professional haters
+  { id: 'hater-1', username: 'Not A Fan', handle: 'notafan_tbh', accountType: 'hater', followers: 18000, isVerified: false, preferredPlatforms: ['chirper', 'tunetok'] },
+  { id: 'hater-2', username: 'The Auditor', handle: 'theauditor', accountType: 'hater', followers: 46000, isVerified: false, preferredPlatforms: ['chirper'] },
+  { id: 'hater-3', username: 'Mid Alert 🚨', handle: 'mid_alert', accountType: 'hater', followers: 9200, isVerified: false, preferredPlatforms: ['chirper', 'flashpic'] },
+  { id: 'hater-4', username: 'Ratio King', handle: 'ratiokingg', accountType: 'hater', followers: 31000, isVerified: false, preferredPlatforms: ['chirper', 'tunetok'] },
+
   // News accounts
   { id: 'news-1', username: 'Rap Daily', handle: 'rapdailynews', accountType: 'news', followers: 2300000, isVerified: true, preferredPlatforms: ['chirper', 'flashpic'] },
   { id: 'news-2', username: 'Pop Wire', handle: 'popwirenews', accountType: 'news', followers: 1800000, isVerified: true, preferredPlatforms: ['chirper'] },

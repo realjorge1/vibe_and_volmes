@@ -12,6 +12,7 @@ import { useGameStore } from '../../store/gameStore';
 import { useSocialStore } from '../../store/socialStore';
 import { computeEngagement } from './platformAlgorithms';
 import { pick } from '../../utils/random';
+import { notifyPost } from '../notifications/triggers';
 
 /**
  * Story posts: one specific moment from the player's life (an activity
@@ -99,5 +100,7 @@ export function publishStoryBeat(beat: StoryBeat, storyId: string): SocialPost |
     const rest = social.trending.filter((t) => t.hashtag !== trend.hashtag);
     social.setTrending([trend, ...rest]);
   }
+  // The post pings the artist's phone a moment later.
+  notifyPost(post);
   return post;
 }

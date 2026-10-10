@@ -14,6 +14,9 @@ import { useMusicStore } from '../../store/musicStore';
 import { useCultureStore } from '../../store/cultureStore';
 import { getEra } from '../../data/culture/eras';
 import { buildDocumentary } from './documentaryEngine';
+import { useCalendarStore } from '../../store/calendarStore';
+import { useIdentityStore } from '../../store/identityStore';
+import { getDream } from '../../data/identity/dreams';
 import { clamp } from '../../utils/random';
 
 /**
@@ -65,9 +68,15 @@ export function computeLegacy(): LegacyScore {
   const classics = music.discography.filter(
     (t) => t.status === 'classic' || t.wentViral
   ).length;
+  // Trophies and dreams that came true are what people remember a life by.
+  const trophies = useCalendarStore.getState().awardHistory.filter((a) => a.won).length;
+  const dreamLegacy = useIdentityStore
+    .getState()
+    .dreamLog.filter((d) => d.fulfilled)
+    .reduce((sum, d) => sum + (getDream(d.defId)?.legacy ?? 0), 0);
   const influenceComponent = Math.round(
-    (player?.stats.industryRespect ?? 0) * 1.4 + classics * 18
-  ); // ~0..220
+    (player?.stats.industryRespect ?? 0) * 1.4 + classics * 18 + clamp(trophies * 25 + dreamLegacy, 0, 160)
+  ); // ~0..380
 
   // Artistry — the craft stats, weighted toward what endures.
   const s = player?.stats;

@@ -7,9 +7,14 @@ import { platformOf } from '../../data/social/platforms';
 import { buildMedia } from '../../data/social/mediaTemplates';
 import { getReputationTier } from '../../utils/statHelpers';
 import { genreLabel } from '../../utils/formatters';
-import { pick, weightedPickKey, chance, randInt, shuffle } from '../../utils/random';
+import { pick, weightedPickKey, chance, randInt } from '../../utils/random';
 import { deriveFanbase, accountToSegment } from './fanbase';
-import { computeEngagement } from './platformAlgorithms';
+import { byAttention, computeEngagement, withFameTone } from './platformAlgorithms';
+import type { DiscourseInput } from '../drama/discourse';
+import { dramaPosts, dramaShare } from '../drama/feed';
+import { feedMix, interleave, splitCount, type LaneInput } from './lanes';
+import { everydayPosts } from './everyday';
+import { celebPosts } from './celebFeed';
 
 /**
  * A reusable post factory. The weekly `feedGenerator` still seeds the
@@ -28,6 +33,8 @@ const ACCOUNT_LEAN: Record<NpcAccount['accountType'], PostSentiment[]> = {
   industry: ['news', 'neutral', 'positive'],
   public: ['neutral', 'meme', 'positive'],
   news: ['news', 'news', 'neutral'],
+  hater: ['hostile', 'critical', 'shade'],
+  artist: ['shade', 'hype', 'shade'],
 };
 
 function repWeights(reputation: number): Record<PostSentiment, number> {
@@ -80,15 +87,23 @@ export interface StreamOpts {
   count: number;
   /** Stable-ish offset so paged ids don't collide. */
   page: number;
+  /** The drama layer's view of the artist's week. */
+  discourse?: DiscourseInput | null;
+  /** The rest of the internet (everyday life, other artists), sized by the artist's fame. */
+  lanes?: LaneInput | null;
 }
 
 /** Generate the next page of posts for a single platform's infinite feed. */
 export function streamMorePosts(opts: StreamOpts): SocialPost[] {
-  const { player, week, platform, track, count, page } = opts;
-  const weights = repWeights(player.stats.reputation);
+  const { player, week, platform, track, page } = opts;
+  const split = opts.lanes ? splitCount(opts.count, feedMix(player.stats.fans)) : { everyday: 0, celeb: 0, you: opts.count };
+  const dramaCount = opts.discourse ? Math.round(split.you * dramaShare(player.stats.fans)) : 0;
+  const count = split.you - dramaCount;
+  const weights = withFameTone(repWeights(player.stats.reputation), player.stats.fans);
   const composition = deriveFanbase(player);
-  const accounts = shuffle(
-    NPC_ACCOUNTS.filter((a) => a.preferredPlatforms.includes(platform))
+  const accounts = byAttention(
+    NPC_ACCOUNTS.filter((a) => a.preferredPlatforms.includes(platform)),
+    player.stats.fans
   );
   const out: SocialPost[] = [];
   for (let i = 0; i < count; i++) {
@@ -134,7 +149,24 @@ export function streamMorePosts(opts: StreamOpts): SocialPost[] {
       week,
     });
   }
-  return out;
+  if (opts.discourse && dramaCount > 0) {
+    const drama = dramaPosts(opts.discourse, {
+      player,
+      week,
+      count: dramaCount,
+      controversy: getReputationTier(player.stats.reputation).label === 'Cancelled' ? 0.5 : 0.15,
+      idPrefix: `stream-d-${platform}-${page}`,
+      platform,
+    });
+    // Interleave so the scroll doesn't come in blocks.
+    for (const p of drama) out.splice(Math.floor(Math.random() * (out.length + 1)), 0, p);
+  }
+  if (!opts.lanes) return out;
+  const others = [
+    ...everydayPosts({ week, baseYear: opts.lanes.baseYear, city: opts.lanes.city, count: split.everyday, idPrefix: `stream-ev-${platform}-${page}`, platform, real: opts.lanes.real }),
+    ...(opts.lanes.celeb ? celebPosts(opts.lanes.celeb, { count: split.celeb, idPrefix: `stream-cl-${platform}-${page}`, platform }) : []),
+  ];
+  return interleave(out, others);
 }
 
 /** A single account's recent timeline — powers profile pages. */
@@ -143,7 +175,9 @@ export function accountTimeline(
   player: Player,
   week: number,
   track: Track | null,
-  count = 8
+  count = 8,
+  /** Lock the timeline to one app (a profile opened inside that app). */
+  onPlatform?: Platform
 ): SocialPost[] {
   const composition = deriveFanbase(player);
   const out: SocialPost[] = [];
@@ -151,7 +185,7 @@ export function accountTimeline(
     const sentiment = pick(ACCOUNT_LEAN[account.accountType]);
     const tpl = eligible(sentiment, player, track);
     if (!tpl) continue;
-    const platform = pick(account.preferredPlatforms);
+    const platform = onPlatform ?? pick(account.preferredPlatforms);
     const fanSegment = accountToSegment(account.accountType, composition);
     const eng = computeEngagement({
       platform,

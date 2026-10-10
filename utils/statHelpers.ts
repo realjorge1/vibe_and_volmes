@@ -16,6 +16,14 @@ export function getFameLevelNumber(fans: number): number {
   return getFameLevel(fans).level;
 }
 
+/**
+ * 0..1: how far the artist's name carries, on a log scale of fans.
+ * 0 fans → 0, 1K → 0.33, 10K → 0.5, 100K → 0.67, 1M → 0.83, 10M → 1.
+ */
+export function fameReach(fans: number): number {
+  return clamp((Math.log10(Math.max(0, fans) + 10) - 1) / 6, 0, 1);
+}
+
 export function getReputationTier(reputation: number) {
   return REPUTATION_TIERS.find(
     (t) => reputation >= t.min && reputation < t.max
@@ -57,10 +65,10 @@ export function formatStreams(n: number): string {
   return n.toString();
 }
 
-/** Stat 0-100 → desaturated data color (low → high). Tesla-OS: muted, not loud. */
+/** Stat 0-100 → data color (low → high). */
 export function statColor(value: number): string {
   if (value >= 70) return COLORS.positive;
-  if (value >= 50) return COLORS.textSecondary;
+  if (value >= 50) return COLORS.accent;
   if (value >= 30) return COLORS.warning;
   return COLORS.negative;
 }

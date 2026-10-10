@@ -41,3 +41,14 @@ app-example
 # generated native folders
 /ios
 /android
+.photo-cache/
+
+# beat engine tools + review renders, people-photo generation work files
+scripts/beats/.tools/
+scripts/beats/.review/
+scripts/photos/people/.raw/
+__pycache__/
+
+# native module build output
+modules/*/android/build/
+modules/*/android/.gradle/

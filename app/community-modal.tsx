@@ -5,6 +5,8 @@ import { Screen } from '../components/ui/Screen';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Text } from '../components/ui/Typography';
+import { ScreenHeader } from '../components/ui/ScreenHeader';
+import { Orb3D } from '../components/fx/Orb3D';
 import { useCommunityStore } from '../store/communityStore';
 import { refreshCommunity } from '../systems/community';
 import { COLORS, SPACING, RADIUS } from '../constants/theme';
@@ -21,14 +23,14 @@ export default function CommunityModal() {
   }, []);
 
   return (
-    <Screen scroll>
-      <Text variant="title" style={styles.title}>
-        Community
-      </Text>
-      <Text variant="caption" muted style={styles.sub}>
-        Anonymous global standings. No accounts, no DMs — just the whole world
-        chasing the same charts as you.
-      </Text>
+    <Screen scroll tint={COLORS.accent}>
+      <ScreenHeader
+        eyebrow="THE WORLD"
+        title="Community"
+        subtitle="Anonymous global standings. No accounts, no DMs — just the whole world chasing the same charts as you."
+        accent={COLORS.accent}
+        right={<Orb3D size={52} color={COLORS.accent} icon="earth" />}
+      />
 
       {rank && (
         <Card accent={COLORS.gold}>
@@ -124,8 +126,6 @@ export default function CommunityModal() {
 }
 
 const styles = StyleSheet.create({
-  title: { marginTop: SPACING.lg },
-  sub: { marginTop: SPACING.xs, marginBottom: SPACING.lg, lineHeight: 18 },
   rankRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

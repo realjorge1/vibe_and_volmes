@@ -13,6 +13,9 @@ import {
 } from '../../systems/songs/songEngine';
 import { refreshSocial } from '../../systems/weekEngine';
 import { awardReleaseXp } from '../../systems/progression/xpEngine';
+import { releaseOutlook } from '../../systems/music/releaseCurve';
+import { afterRelease, releaseBoost, stampTrack } from '../../systems/music/releaseHooks';
+import { notifyRelease } from '../../systems/notifications/triggers';
 import { exportSong } from '../../audio/export/exporter';
 import type { ProducedSong, Lyrics } from '../../types/audio';
 import type { ReleaseResult } from '../../types/music';
@@ -71,11 +74,11 @@ export default function FinalizeStep() {
     setBusy(true);
 
     const lyrics = draft.lyrics;
-    const { song, release: result, reactions } = produceAndRelease(
-      player,
-      week,
-      draft
-    );
+    // Who the artist is right now (traits, era, a comeback's hype) shapes it.
+    const produced = produceAndRelease(player, week, draft, releaseBoost());
+    const { song, reactions } = produced;
+    // ...and who owns it is stamped on it (masters), plus the story stamps.
+    const result = { ...produced.release, track: stampTrack(produced.release.track) };
 
     const music = useMusicStore.getState();
     const ps = usePlayerStore.getState();
@@ -98,9 +101,13 @@ export default function FinalizeStep() {
 
     // Shipping a record is a real progression beat.
     awardReleaseXp(result.reception);
+    // The label's quota, the era, the comeback, the wants it fulfils.
+    afterRelease(result);
 
     // The world reacts immediately to what was actually made.
     refreshSocial(reactions, []);
+    // ...and the artist's phone starts lighting up.
+    notifyRelease(result.track.id);
 
     ps.save();
     music.save();
@@ -155,13 +162,19 @@ export default function FinalizeStep() {
             {r.message}
           </Text>
           <View style={styles.stats}>
-            <Stat label="Streams" value={formatStreams(r.streamCount)} />
+            <Stat label="Critics" value={`${r.criticsScore}`} />
+            <Stat label="First week" value={formatStreams(r.streamCount)} />
             <Stat
-              label="Peak"
+              label="Debut"
               value={r.chartPosition ? ordinal(r.chartPosition) : 'Uncharted'}
             />
             <Stat label="New Fans" value={formatStreams(r.fansGained)} />
           </View>
+          {releaseOutlook(r.track) ? (
+            <Text variant="caption" muted style={styles.outlook}>
+              {releaseOutlook(r.track)}
+            </Text>
+          ) : null}
         </Card>
 
         <ScoreCard score={song.score} />
@@ -312,6 +325,7 @@ const styles = StyleSheet.create({
   releaseMeta: { flex: 1 },
   reception: { marginTop: SPACING.sm },
   msg: { marginTop: SPACING.base, lineHeight: 20 },
+  outlook: { marginTop: SPACING.md, lineHeight: 18 },
   stats: {
     flexDirection: 'row',
     flexWrap: 'wrap',

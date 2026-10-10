@@ -1,214 +1,297 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
-import { View, FlatList, Pressable, StyleSheet } from 'react-native';
+import { useMemo } from 'react';
+import { View, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import type { SocialPost, Platform } from '../../types/social';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import type { Platform } from '../../types/social';
+import type { PhoneNotification } from '../../types/notifications';
 import { useSocialStore } from '../../store/socialStore';
 import { usePlayerStore } from '../../store/playerStore';
-import { useGameStore } from '../../store/gameStore';
 import { useMusicStore } from '../../store/musicStore';
-import { streamMorePosts } from '../../systems/social/feedStream';
+import { useNotificationStore } from '../../store/notificationStore';
 import { PLATFORM_ORDER, platformOf } from '../../data/social/platforms';
+import { playerAccount, playerHandle } from '../../systems/social/playerAccount';
+import { openNotification } from '../../systems/notifications/open';
+import { clearShade } from '../../systems/notifications/deliver';
+import { NOTIFY_APPS } from '../../systems/notifications/compose';
+import { photoByKey } from '../../systems/visuals/photoIndex';
 import { Screen } from '../../components/ui/Screen';
+import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { Text } from '../../components/ui/Typography';
-import {
-  SegmentedControl,
-  type Segment,
-} from '../../components/ui/SegmentedControl';
-import { PostCard } from '../../components/social/PostCard';
-import { COLORS, RADIUS, SPACING } from '../../constants/theme';
+import { Card } from '../../components/ui/Card';
+import { Grid } from '../../components/ui/Grid';
+import { Orb3D } from '../../components/fx/Orb3D';
+import { AppFace, AppIcon } from '../../components/phone/AppIcon';
+import { Avatar } from '../../components/phone/Avatar';
+import { T } from '../../components/phone/T';
+import { Photo } from '../../components/visuals/Photo';
+import { OwnCover } from '../../components/visuals/CoverPoster';
+import type { IconOrigin } from '../../components/phone/PhoneApp';
+import { COLORS, GRADIENTS, SPACING, ifAnimated } from '../../constants/theme';
 import { shortNumber } from '../../utils/formatters';
 
-const FEED_SEGMENTS: readonly Segment<Tab>[] = [
-  { key: 'feed', label: 'For You' },
-  { key: 'trending', label: 'Trending' },
-];
+/** The apps where the artist has an account (VibeNews is read-only). */
+const SOCIAL_APPS: Platform[] = ['chirper', 'flashpic', 'tunetok'];
 
-type Tab = 'feed' | 'trending';
+/** The screen's side padding, undone so the shade reaches both edges. */
+const BLEED = SPACING.lg - 4;
 
+/** "now", "4m", "2h", "3d": how a phone stamps a notification. */
+function ago(at: number, now: number): string {
+  const s = Math.max(0, Math.round((now - at) / 1000));
+  if (s < 60) return 'now';
+  if (s < 3600) return `${Math.floor(s / 60)}m`;
+  if (s < 86_400) return `${Math.floor(s / 3600)}h`;
+  return `${Math.floor(s / 86_400)}d`;
+}
+
+/**
+ * Social is the artist's phone: a couple of widgets, the apps, and the
+ * notification shade underneath, everything the apps pinged about. Tapping a
+ * notification opens that app on that post or story; tapping an app opens it
+ * full screen, grown out of its icon.
+ */
 export default function Social() {
   const router = useRouter();
-  const feed = useSocialStore((s) => s.feed);
   const trending = useSocialStore((s) => s.trending);
-  const activePlatform = useSocialStore((s) => s.activePlatform);
-  const setActivePlatform = useSocialStore((s) => s.setActivePlatform);
   const aiEnhancing = useSocialStore((s) => s.aiEnhancing);
+  const items = useNotificationStore((s) => s.items);
+  const player = usePlayerStore((s) => s.player);
+  const discography = useMusicStore((s) => s.discography);
 
-  const [tab, setTab] = useState<Tab>('feed');
-  const [extra, setExtra] = useState<SocialPost[]>([]);
-  const [page, setPage] = useState(1);
-
-  // Reset the lazy tail whenever the platform changes.
-  useEffect(() => {
-    setExtra([]);
-    setPage(1);
-  }, [activePlatform]);
-
-  const seed = useMemo(
-    () => feed.filter((p) => p.platform === activePlatform),
-    [feed, activePlatform]
+  const reach = useMemo(
+    () =>
+      player
+        ? SOCIAL_APPS.map((p) => ({ platform: p, followers: playerAccount(player, p, discography).account.followers }))
+        : [],
+    [player, discography]
   );
+  const totalFollowers = reach.reduce((s, r) => s + r.followers, 0);
 
-  const data = useMemo(() => [...seed, ...extra], [seed, extra]);
+  const badges = useMemo(() => {
+    const out = {} as Record<Platform, number>;
+    for (const p of PLATFORM_ORDER) out[p] = 0;
+    for (const n of items) if (!n.read && n.app !== 'game') out[n.app] += 1;
+    return out;
+  }, [items]);
+  const unread = PLATFORM_ORDER.reduce((s, p) => s + badges[p], 0);
 
-  const loadMore = useCallback(() => {
-    const player = usePlayerStore.getState().player;
-    if (!player) return;
-    const more = streamMorePosts({
-      player,
-      week: useGameStore.getState().week,
-      platform: activePlatform,
-      track: useMusicStore.getState().getLatestTrack(),
-      count: 12,
-      page,
-    });
-    setExtra((prev) => [...prev, ...more]);
-    setPage((p) => p + 1);
-  }, [activePlatform, page]);
+  const open = (platform: Platform, origin: IconOrigin | null, tab?: string) => {
+    const params: Record<string, string> = { platform };
+    if (origin) {
+      params.x = String(Math.round(origin.x));
+      params.y = String(Math.round(origin.y));
+    }
+    if (tab) params.tab = tab;
+    router.push({ pathname: '/phone-app', params });
+  };
 
-  const openThread = useCallback(
-    (post: SocialPost) => {
-      useSocialStore.getState().setFocusedPost(post);
-      router.push('/thread-modal');
-    },
-    [router]
-  );
-
-  const openProfile = useCallback(
-    (post: SocialPost) => {
-      useSocialStore.getState().setFocusedAccountId(post.account.id);
-      router.push('/profile-modal');
-    },
-    [router]
-  );
-
-  const plat = platformOf(activePlatform);
+  const shown = items.slice(0, 24);
+  const now = Date.now();
 
   return (
-    <Screen>
-      <Text variant="title" style={styles.title}>
-        {plat.name}
-      </Text>
-      <Text variant="caption" muted style={styles.tagline}>
-        {aiEnhancing ? '✦ the internet is reacting to you…' : plat.tagline}
-      </Text>
-
-      <View style={styles.platforms}>
-        {PLATFORM_ORDER.map((id: Platform) => {
-          const p = platformOf(id);
-          const active = activePlatform === id;
-          return (
-            <Pressable
-              key={id}
-              onPress={() => setActivePlatform(id)}
-              style={[styles.pTab, active && { backgroundColor: p.color }]}
-            >
-              <Text
-                variant="caption"
-                weight="semibold"
-                color={active ? COLORS.bg : COLORS.textSecondary}
-              >
-                {p.name}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      <SegmentedControl
-        segments={FEED_SEGMENTS}
-        value={tab}
-        onChange={setTab}
-        style={styles.segment}
+    <Screen scroll>
+      <ScreenHeader
+        eyebrow="SOCIAL"
+        title={player ? `@${playerHandle(player)}` : 'Your phone'}
+        subtitle={
+          aiEnhancing
+            ? '✦ the internet is reacting to you…'
+            : unread > 0
+              ? `${unread} new notification${unread === 1 ? '' : 's'}`
+              : 'You’re all caught up.'
+        }
+        accent={COLORS.accent}
+        right={<Orb3D size={48} color={COLORS.accent} icon="phone-portrait" />}
       />
 
-      {tab === 'trending' ? (
-        <FlatList
-          data={trending}
-          keyExtractor={(t) => t.hashtag}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <Text variant="body" muted center style={styles.empty}>
-              Nothing trending yet. Make some noise.
+      <Grid columns={2} gap={SPACING.sm + 2} style={styles.widgets}>
+        <Card accent={COLORS.accent} style={styles.widget}>
+          <Text variant="label" muted>
+            FOLLOWERS
+          </Text>
+          <Text variant="metric" style={styles.widgetBig}>
+            {shortNumber(totalFollowers)}
+          </Text>
+          <View style={styles.reach}>
+            {reach.map((r) => (
+              <View key={r.platform} style={styles.reachRow}>
+                <AppFace platform={r.platform} size={16} />
+                <Text variant="caption" muted numberOfLines={1} style={styles.flex}>
+                  {platformOf(r.platform).name}
+                </Text>
+                <Text variant="caption" weight="bold">
+                  {shortNumber(r.followers)}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </Card>
+        <Card accent={COLORS.warning} style={styles.widget} onPress={() => open('chirper', null, 'explore')}>
+          <View style={styles.widgetHead}>
+            <Text variant="label" muted>
+              TRENDING
             </Text>
-          }
-          renderItem={({ item, index }) => (
+            <Ionicons name="flame" size={13} color={COLORS.warning} />
+          </View>
+          {trending.length === 0 ? (
+            <Text variant="caption" muted style={styles.widgetEmpty}>
+              Nothing yet. Make some noise.
+            </Text>
+          ) : (
+            <View style={styles.trends}>
+              {trending.slice(0, 3).map((t, i) => (
+                <View key={t.hashtag} style={styles.trendRow}>
+                  <Text variant="caption" weight="bold" color={COLORS.warning} style={styles.rank}>
+                    {i + 1}
+                  </Text>
+                  <Text variant="caption" weight="semibold" numberOfLines={1} style={styles.flex}>
+                    {t.hashtag}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </Card>
+      </Grid>
+
+      <Animated.View entering={ifAnimated(FadeInDown.delay(80).duration(420).springify().damping(16))}>
+        <Grid columns={4} gap={SPACING.sm} style={styles.apps}>
+          {PLATFORM_ORDER.map((p) => (
+            <AppIcon key={p} platform={p} size={62} badge={badges[p]} onOpen={(o) => open(p, o)} />
+          ))}
+        </Grid>
+      </Animated.View>
+
+      <View style={styles.shade}>
+        <View style={styles.shadeHead}>
+          <T size={20} weight="700">
+            Notifications
+          </T>
+          {items.length > 0 ? (
             <Pressable
-              style={styles.trendRow}
-              onPress={() => setTab('feed')}
+              hitSlop={10}
+              onPress={() => {
+                useNotificationStore.getState().clearAll();
+                useNotificationStore.getState().save();
+                clearShade();
+              }}
+              style={styles.clear}
             >
-              <Text variant="label" muted>
-                {index + 1} · {(item.kind ?? 'trending').toString().toUpperCase()}
-                {item.momentum === 'rising' ? ' · 🔥 RISING' : ''}
-              </Text>
-              <Text variant="subheading" color={COLORS.secondary}>
-                {item.hashtag}
-              </Text>
-              <Text variant="caption" muted>
-                {shortNumber(item.volume)} posts
-              </Text>
+              <T size={13} weight="600" color="#C4C7C5">
+                Clear all
+              </T>
             </Pressable>
-          )}
-          contentContainerStyle={styles.listPad}
-        />
-      ) : (
-        <FlatList
-          data={data}
-          keyExtractor={(p) => p.id}
-          showsVerticalScrollIndicator={false}
-          onEndReached={loadMore}
-          onEndReachedThreshold={0.6}
-          initialNumToRender={8}
-          windowSize={11}
-          removeClippedSubviews
-          ListEmptyComponent={
-            <Text variant="body" muted center style={styles.empty}>
-              No chatter on {plat.name} yet. Make some noise.
-            </Text>
-          }
-          renderItem={({ item }) => (
-            <PostCard
-              post={item}
-              onPress={openThread}
-              onPressAccount={openProfile}
-            />
-          )}
-          ListFooterComponent={
-            data.length > 0 ? (
-              <Text variant="caption" muted center style={styles.footer}>
-                the feed never sleeps…
-              </Text>
-            ) : null
-          }
-          contentContainerStyle={styles.listPad}
-        />
-      )}
+          ) : null}
+        </View>
+
+        {shown.length === 0 ? (
+          <View style={styles.empty}>
+            <Ionicons name="notifications-off-outline" size={30} color="#8E918F" />
+            <T size={15} weight="600" color="#C4C7C5">
+              No notifications
+            </T>
+            <T size={13} color="#8E918F" center>
+              Likes, comments, follows and news about you land here and on your phone.
+            </T>
+          </View>
+        ) : (
+          shown.map((n) => <ShadeRow key={n.id} n={n} now={now} />)
+        )}
+      </View>
+
+      <View style={styles.tabPad} />
     </Screen>
   );
 }
 
+/** One notification, expanded the way Android shows it in the shade. */
+function ShadeRow({ n, now }: { n: PhoneNotification; now: number }) {
+  const app = NOTIFY_APPS[n.app];
+  const photo = photoByKey(n.image?.photoKey);
+  const wide = !!photo && (n.app === 'flashpic' || n.app === 'tunetok' || n.app === 'vibestream');
+  return (
+    <Pressable onPress={() => openNotification(n)} style={({ pressed }) => [styles.row, !n.read && styles.rowUnread, pressed && styles.rowPressed]}>
+      <View style={styles.rowHead}>
+        {n.app === 'game' ? (
+          <LinearGradient colors={GRADIENTS.brand} style={styles.gameFace}>
+            <Ionicons name="sparkles" size={11} color="#FFFFFF" />
+          </LinearGradient>
+        ) : (
+          <AppFace platform={n.app} size={18} />
+        )}
+        <T size={12} weight="500" color="#C4C7C5">
+          {app.name}
+        </T>
+        <T size={12} color="#8E918F">
+          · {ago(n.at, now)}
+        </T>
+        <View style={styles.flex} />
+        {!n.read ? <View style={[styles.dot, { backgroundColor: app.color }]} /> : null}
+      </View>
+      <View style={styles.rowBody}>
+        <View style={styles.flex}>
+          {n.title ? (
+            <T size={15} weight="600" color="#E9E9EA" numberOfLines={2}>
+              {n.title}
+            </T>
+          ) : null}
+          <T size={14} color="#C4C7C5" lh={19} numberOfLines={4} style={styles.bodyText}>
+            {n.body}
+          </T>
+        </View>
+        {n.actor ? <Avatar id={n.actor.id} name={n.actor.name} size={42} /> : null}
+      </View>
+      {wide && photo ? (
+        <Photo photo={photo} style={styles.picture} />
+      ) : n.image?.trackId && n.post ? (
+        <OwnCover trackId={n.image.trackId} title={n.post.media?.description.match(/"([^"]+)"/)?.[1] ?? ''} style={styles.cover} compact />
+      ) : null}
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  title: { marginTop: SPACING.base },
-  tagline: { marginBottom: SPACING.base },
-  platforms: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm, marginBottom: SPACING.md },
-  pTab: {
-    paddingHorizontal: SPACING.base,
-    paddingVertical: SPACING.sm,
-    borderRadius: RADIUS.full,
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: COLORS.border,
+  flex: { flex: 1 },
+  widgets: { marginBottom: SPACING.xl },
+  widget: { minHeight: 132 },
+  widgetHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  widgetBig: { marginTop: 2 },
+  widgetEmpty: { marginTop: SPACING.sm },
+  reach: { marginTop: SPACING.sm, gap: 5 },
+  reachRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  trends: { marginTop: SPACING.sm, gap: 7 },
+  trendRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  rank: { width: 12, textAlign: 'center' },
+  apps: { marginBottom: SPACING.xl },
+
+  shade: {
+    marginHorizontal: -BLEED,
+    backgroundColor: 'rgba(16,15,22,0.92)',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingTop: 18,
+    paddingBottom: 8,
+    overflow: 'hidden',
   },
-  segment: { marginBottom: SPACING.base },
-  trendRow: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: SPACING.base,
-    marginBottom: SPACING.sm,
-    gap: 2,
+  shadeHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 10 },
+  clear: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.08)' },
+  row: {
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255,255,255,0.08)',
   },
-  empty: { paddingVertical: SPACING['3xl'] },
-  footer: { paddingVertical: SPACING.xl },
-  listPad: { paddingBottom: SPACING['3xl'] * 2.4 },
+  rowUnread: { backgroundColor: 'rgba(255,255,255,0.035)' },
+  rowPressed: { backgroundColor: 'rgba(255,255,255,0.07)' },
+  rowHead: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  rowBody: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 8 },
+  bodyText: { marginTop: 2 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  picture: { marginTop: 12, width: '100%', aspectRatio: 2, borderRadius: 14 },
+  cover: { marginTop: 12, width: 96, height: 96, borderRadius: 10 },
+  gameFace: { width: 18, height: 18, borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
+  empty: { alignItems: 'center', gap: 8, paddingHorizontal: 40, paddingVertical: 36 },
+  tabPad: { height: SPACING['3xl'] * 1.5 },
 });

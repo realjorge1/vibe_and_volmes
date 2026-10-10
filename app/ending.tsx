@@ -1,11 +1,16 @@
 import { useMemo, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, useWindowDimensions } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
 import { Screen } from '../components/ui/Screen';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Text } from '../components/ui/Typography';
-import { COLORS, RADIUS, SPACING } from '../constants/theme';
+import { Orb3D } from '../components/fx/Orb3D';
+import { GradientText } from '../components/fx/GradientText';
+import { RingGauge } from '../components/fx/RingGauge';
+import { COLORS, GRADIENTS, RADIUS, SPACING, ifAnimated, withAlpha } from '../constants/theme';
 import { usePlayerStore } from '../store/playerStore';
 import { useGameStore } from '../store/gameStore';
 import { usePeopleStore } from '../store/peopleStore';
@@ -37,6 +42,7 @@ const TIER_LABEL: Record<string, string> = {
  */
 export default function Ending() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
   const player = usePlayerStore((s) => s.player);
   const ending = useGameStore((s) => s.ending);
   const people = usePeopleStore((s) => s.people);
@@ -50,18 +56,24 @@ export default function Ending() {
   if (result) {
     const unlocks = result.unlockedPerkIds.length + result.unlockedBloodlineIds.length;
     return (
-      <Screen scroll>
-        <Text variant="title" style={styles.subtitle}>
-          The mic goes quiet.
-        </Text>
-        <Card>
-          <Text variant="body">
-            +{result.legacyGained} legacy minted. Lifetime legacy:{' '}
-            {result.lifetimeLegacy.toLocaleString('en-US')}.
+      <Screen scroll tint={COLORS.gold}>
+        <Animated.View entering={ifAnimated(ZoomIn.springify().damping(14))} style={styles.center}>
+          <Orb3D size={96} color={COLORS.gold} icon="infinite" />
+          <Text variant="title" center style={styles.subtitle}>
+            The mic goes quiet.
+          </Text>
+        </Animated.View>
+        <Card accent={COLORS.gold}>
+          <Text variant="label" muted>
+            LEGACY MINTED
+          </Text>
+          <GradientText text={`+${result.legacyGained}`} size={44} colors={GRADIENTS.gold} style={styles.minted} />
+          <Text variant="body" muted>
+            Lifetime legacy: {result.lifetimeLegacy.toLocaleString('en-US')}.
           </Text>
           {unlocks > 0 && (
             <Text variant="body" color={COLORS.primary} style={styles.gap}>
-              {unlocks} new inheritance{unlocks === 1 ? '' : 's'} unlocked for your next artist.
+              ✦ {unlocks} new inheritance{unlocks === 1 ? '' : 's'} unlocked for your next artist.
             </Text>
           )}
           {result.heir && (
@@ -73,6 +85,9 @@ export default function Ending() {
         </Card>
         <Button
           label={result.heir ? `Begin as ${result.heir.childName}` : 'Begin a new life'}
+          icon="play"
+          variant="brand"
+          size="lg"
           onPress={() => router.replace('/onboarding')}
           style={styles.gap}
         />
@@ -100,41 +115,82 @@ export default function Ending() {
   const finish = (childId?: string) => setResult(endCareer(childId));
 
   return (
-    <Screen scroll>
-      <View style={styles.ribbon}>
-        <Text variant="label" color={COLORS.bg} center>
-          {isNewRibbon ? 'NEW RIBBON' : 'RIBBON'}
+    <Screen scroll tint={COLORS.gold}>
+      <Animated.View entering={ifAnimated(ZoomIn.springify().damping(13))} style={styles.center}>
+        <Orb3D size={104} color={COLORS.gold} icon="trophy" />
+      </Animated.View>
+
+      <Animated.View entering={ifAnimated(FadeInDown.delay(150).springify().damping(15))} style={styles.ribbon}>
+        <LinearGradient
+          colors={GRADIENTS.gold}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[StyleSheet.absoluteFill, styles.ribbonRound]}
+        />
+        <LinearGradient
+          colors={GRADIENTS.sheen}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={styles.ribbonSheen}
+        />
+        <Text variant="label" color="#3A2600" center>
+          {isNewRibbon ? '✦ NEW RIBBON ✦' : 'RIBBON'}
         </Text>
-        <Text variant="title" color={COLORS.bg} center style={styles.ribbonTitle}>
+        <Text variant="title" color="#2A1A00" center style={styles.ribbonTitle}>
           {identity.title}
         </Text>
-      </View>
+      </Animated.View>
 
-      <Text variant="label" muted center style={styles.subtitle}>
-        {`${def.label.toUpperCase()} · AGE ${ending.age} · WEEK ${ending.week}`}
-      </Text>
-      <Text variant="heading" center style={styles.name}>
-        {player.artistName}
-      </Text>
-      <Text variant="body" center style={styles.line}>
-        {fillFinalLine(def, player.artistName, ending.age)}
-      </Text>
-      <Text variant="caption" muted center style={styles.blurb}>
-        {identity.blurb}
-      </Text>
+      <Animated.View entering={ifAnimated(FadeInDown.delay(300).duration(500))}>
+        <Text variant="label" muted center style={styles.subtitle}>
+          {`${def.label.toUpperCase()} · AGE ${ending.age} · WEEK ${ending.week}`}
+        </Text>
+        <Text
+          variant="title"
+          center
+          color={COLORS.gold}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          style={[styles.name, { maxWidth: width - 48 }]}
+        >
+          {player.artistName}
+        </Text>
+        <Text variant="body" center style={styles.line}>
+          {fillFinalLine(def, player.artistName, ending.age)}
+        </Text>
+        <Text variant="caption" muted center style={styles.blurb}>
+          {identity.blurb}
+        </Text>
+        <Text variant="caption" color={COLORS.primary} center style={styles.blurb}>
+          {def.kind === 'died'
+            ? `${player.artistName} lives on in the next world: their songs on the radio, their estate still releasing.`
+            : `${player.artistName} lives on in the next world: still out there, still touring, remembered.`}
+        </Text>
+      </Animated.View>
 
       <Card accent={COLORS.gold}>
-        <Text variant="label" muted>
-          LEGACY
-        </Text>
-        <Text variant="heading" style={styles.legacy}>
-          {TIER_LABEL[dossier.legacy.tier] ?? dossier.legacy.tier} · {dossier.legacy.total}/1000
-        </Text>
-        {card.statLines.map((l) => (
-          <Text key={l} variant="caption" muted>
-            {l}
-          </Text>
-        ))}
+        <View style={styles.legacyRow}>
+          <RingGauge progress={dossier.legacy.total / 1000} size={76} stroke={7} color={COLORS.gold}>
+            <Text variant="subheading" color={COLORS.gold}>
+              {dossier.legacy.total}
+            </Text>
+          </RingGauge>
+          <View style={styles.flex}>
+            <Text variant="label" muted>
+              LEGACY
+            </Text>
+            <Text variant="heading" style={styles.legacy}>
+              {TIER_LABEL[dossier.legacy.tier] ?? dossier.legacy.tier} · {dossier.legacy.total}/1000
+            </Text>
+          </View>
+        </View>
+        <View style={styles.statLines}>
+          {card.statLines.map((l) => (
+            <Text key={l} variant="caption" muted>
+              {l}
+            </Text>
+          ))}
+        </View>
       </Card>
 
       <Card>
@@ -151,7 +207,7 @@ export default function Ending() {
                 key={id}
                 style={[styles.chip, have && styles.chipEarned, id === identity.label && styles.chipNow]}
               >
-                <Text variant="caption" color={have ? COLORS.text : COLORS.textMuted}>
+                <Text variant="caption" weight={have ? 'semibold' : 'regular'} color={have ? COLORS.gold : COLORS.textMuted}>
                   {IDENTITY_TITLES[id].replace(/^The /, '')}
                 </Text>
               </View>
@@ -162,7 +218,8 @@ export default function Ending() {
 
       <Button
         label="Share the story"
-        variant="ghost"
+        icon="share-social"
+        variant="outline"
         onPress={() => shareStoryCard(card)}
         style={styles.gap}
       />
@@ -174,6 +231,8 @@ export default function Ending() {
         <Button
           key={c.id}
           label={`Continue as ${c.name} (${Math.max(18, childAge(c, ending.week))})`}
+          icon="people"
+          variant="brand"
           onPress={() => finish(c.id)}
           style={styles.gap}
         />
@@ -186,7 +245,8 @@ export default function Ending() {
       )}
       <Button
         label="Start a new life"
-        variant={children.length > 0 ? 'ghost' : 'primary'}
+        icon="refresh"
+        variant={children.length > 0 ? 'ghost' : 'brand'}
         onPress={() => finish()}
         style={styles.gap}
       />
@@ -195,29 +255,41 @@ export default function Ending() {
 }
 
 const styles = StyleSheet.create({
+  center: { alignItems: 'center', marginTop: SPACING.lg },
+  flex: { flex: 1 },
   ribbon: {
     marginTop: SPACING.lg,
-    backgroundColor: COLORS.gold,
-    borderRadius: RADIUS.md,
+    borderRadius: RADIUS.lg,
     paddingVertical: SPACING.base,
     paddingHorizontal: SPACING.lg,
+    overflow: 'hidden',
   },
+  ribbonRound: { borderRadius: RADIUS.lg },
+  ribbonSheen: { position: 'absolute', top: 0, left: 0, right: 0, height: '50%' },
   ribbonTitle: { marginTop: SPACING.xs },
   subtitle: { marginTop: SPACING.lg },
-  name: { marginTop: SPACING.xs },
+  minted: { marginVertical: SPACING.xs },
+  name: {
+    marginTop: SPACING.sm,
+    alignSelf: 'center',
+    fontSize: 28,
+    lineHeight: 36,
+  },
   line: { marginTop: SPACING.md, marginBottom: SPACING.sm },
   blurb: { marginBottom: SPACING.lg },
-  legacy: { marginTop: SPACING.xs, marginBottom: SPACING.sm },
-  ribbons: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.xs, marginTop: SPACING.sm },
+  legacyRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.base },
+  legacy: { marginTop: SPACING.xs },
+  statLines: { marginTop: SPACING.md, gap: 2 },
+  ribbons: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.xs + 2, marginTop: SPACING.md },
   chip: {
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 2,
-    borderRadius: RADIUS.sm,
+    paddingHorizontal: SPACING.sm + 2,
+    paddingVertical: 4,
+    borderRadius: RADIUS.full,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
-  chipEarned: { borderColor: COLORS.gold },
-  chipNow: { backgroundColor: COLORS.surface3 },
+  chipEarned: { borderColor: withAlpha(COLORS.gold, 0.5), backgroundColor: withAlpha(COLORS.gold, 0.08) },
+  chipNow: { backgroundColor: withAlpha(COLORS.gold, 0.22) },
   gap: { marginTop: SPACING.sm },
   next: { marginTop: SPACING.lg },
 });

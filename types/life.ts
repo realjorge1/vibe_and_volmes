@@ -32,7 +32,11 @@ export type ActivityCategory =
   | 'nightlife'
   | 'love'
   | 'money'
-  | 'risky';
+  | 'risky'
+  | 'beef'
+  | 'charity'
+  /** The only things there are to do while locked up. */
+  | 'jail';
 
 /** Who `{npc}` names in an activity's text. */
 export type ActivityNpc = 'world' | 'celebrity' | 'rival';
@@ -88,6 +92,11 @@ export interface LifeActivity {
   gates?: ActivityGates;
   /** Minimum weeks between two uses. */
   cooldownWeeks?: number;
+  /**
+   * A launcher, not a roll: opens this screen instead (the escape attempt,
+   * a gig). Its outcomes are what the screen resolves to.
+   */
+  opens?: string;
   outcomes: ActivityOutcome[];
 }
 

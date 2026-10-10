@@ -52,6 +52,21 @@ test('computeChartScore: bounded, and streams are the dominant factor', () => {
   assert.ok(streamsOnly > buzzOnly);
 });
 
+test('computeChartScore: support factors cannot chart a song nobody streams', () => {
+  const maxed = {
+    socialBuzz: 100,
+    playlistSupport: 100,
+    trendAlignment: 100,
+    labelBacking: 100,
+    reputation: 100,
+  };
+  const tiny = computeChartScore({ weeklyStreams: 800, ...maxed }).score;
+  assert.equal(chartPositionFromScore(tiny), null, 'hype alone does not chart');
+  const big = computeChartScore({ weeklyStreams: 2_000_000, ...maxed }).score;
+  const bigBare = computeChartScore({ weeklyStreams: 2_000_000, ...ZERO }).score;
+  assert.ok(big - bigBare > 40, 'full support once people are really streaming');
+});
+
 test('computeChartScore: factors breakdown is normalized 0-100', () => {
   const { factors } = computeChartScore({
     weeklyStreams: 500_000,

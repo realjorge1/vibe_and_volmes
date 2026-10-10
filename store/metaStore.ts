@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { HeirInheritance, MetaProfile, RetiredCareer } from '../types/meta';
+import type { HeirInheritance, MetaProfile, PastLife, RetiredCareer } from '../types/meta';
 import type { CareerDossier, LegacyTier } from '../types/legacy';
 import { STARTING_PERKS } from '../data/meta/perks';
 import { BLOODLINES } from '../data/meta/bloodlines';
@@ -41,6 +41,12 @@ interface MetaActions {
   /** Consume the pending selections at onboarding; clears them. */
   consumePending: () => { perkIds: string[]; bloodlineId: string | null };
   isPerkUnlocked: (id: string) => boolean;
+  /** A finished life joins the world of the lives after it. */
+  addPastLife: (life: PastLife) => void;
+  /** A challenge finished; mints its legacy. Returns false if already done this life. */
+  recordChallenge: (id: string, artistName: string, legacy: number) => boolean;
+  /** A dream came true (lifetime tally). */
+  recordDream: (id: string) => void;
   load: () => void;
   save: () => void;
 }
@@ -58,6 +64,9 @@ const DEFAULT: MetaProfile = {
   totalCareers: 0,
   identitiesEarned: {},
   pendingHeir: null,
+  pastLives: [],
+  challengesCompleted: [],
+  dreamsEarned: {},
 };
 
 export const useMetaStore = create<MetaStore>((set, get) => ({
@@ -155,6 +164,29 @@ export const useMetaStore = create<MetaStore>((set, get) => ({
     return get().unlockedPerkIds.includes(id);
   },
 
+  addPastLife(life) {
+    set({ pastLives: [life, ...get().pastLives.filter((p) => p.id !== life.id)].slice(0, 20) });
+    get().save();
+  },
+
+  recordChallenge(id, artistName, legacy) {
+    const s = get();
+    const sameLife = s.challengesCompleted.some((c) => c.id === id && c.artistName === artistName);
+    if (sameLife) return false;
+    set({
+      challengesCompleted: [{ id, artistName, completedAt: Date.now() }, ...s.challengesCompleted].slice(0, 100),
+      lifetimeLegacy: s.lifetimeLegacy + legacy,
+    });
+    get().save();
+    return true;
+  },
+
+  recordDream(id) {
+    const s = get();
+    set({ dreamsEarned: { ...s.dreamsEarned, [id]: (s.dreamsEarned[id] ?? 0) + 1 } });
+    get().save();
+  },
+
   load() {
     const saved = loadMeta<MetaProfile>();
     if (saved) set({ ...DEFAULT, ...saved });
@@ -172,6 +204,9 @@ export const useMetaStore = create<MetaStore>((set, get) => ({
       totalCareers,
       identitiesEarned,
       pendingHeir,
+      pastLives,
+      challengesCompleted,
+      dreamsEarned,
     } = get();
     saveMeta({
       lifetimeLegacy,
@@ -184,6 +219,9 @@ export const useMetaStore = create<MetaStore>((set, get) => ({
       totalCareers,
       identitiesEarned,
       pendingHeir,
+      pastLives,
+      challengesCompleted,
+      dreamsEarned,
     });
   },
 }));

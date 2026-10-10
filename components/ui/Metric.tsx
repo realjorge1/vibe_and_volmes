@@ -31,13 +31,15 @@ export function Metric({
 }: Props) {
   const textAlign = align;
   return (
-    <View style={[{ alignItems: alignItem(align) }, style]}>
-      <Text variant="label" color={COLORS.textMuted} style={{ textAlign }}>
+    <View style={[styles.wrap, { alignItems: alignItem(align) }, style]}>
+      <Text variant="label" color={COLORS.textMuted} style={{ textAlign }} numberOfLines={1}>
         {label.toUpperCase()}
       </Text>
       <Text
         variant={large ? 'display' : 'metric'}
         color={color}
+        numberOfLines={1}
+        adjustsFontSizeToFit
         style={[styles.value, { textAlign }]}
       >
         {value}
@@ -58,5 +60,7 @@ function alignItem(align: 'left' | 'center' | 'right') {
 }
 
 const styles = StyleSheet.create({
+  // Lets a row of metrics share tight space; values then shrink to fit.
+  wrap: { flexShrink: 1 },
   value: { marginTop: SPACING.xs },
 });

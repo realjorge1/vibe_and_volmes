@@ -24,11 +24,11 @@ export const PLATFORM_VOICE: Record<Platform, string> = {
   chirper:
     'Chirp (microblogging): terse, quote-tweet energy, lowercase, ratio-bait, ≤220 chars',
   flashpic:
-    'VibeSnap (photo/lifestyle): aspirational caption voice, emojis, aesthetic, hashtag-light',
+    'VibeGram (photo/lifestyle): aspirational caption voice, emojis, aesthetic, hashtag-light',
   tunetok:
-    'HypeFeed (short video): hook-first, trend-aware, "POV:" / "the way…", chaotic-gen-z',
+    'TokTalk (short video): hook-first, trend-aware, "POV:" / "the way…", chaotic-gen-z',
   vibestream:
-    'PulseNews (music news): clipped headline/blurb register, sourced, industry-literate',
+    'VibeNews (music news): clipped headline/blurb register, sourced, industry-literate',
 };
 
 /** How each fan segment talks — the same event in six different voices. */

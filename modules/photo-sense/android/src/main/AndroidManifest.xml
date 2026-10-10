@@ -1,0 +1,6 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <application>
+    <!-- Ask Play services for the image labeling, face and text models at install time. -->
+    <meta-data android:name="com.google.mlkit.vision.DEPENDENCIES" android:value="ica,face,ocr" />
+  </application>
+</manifest>
