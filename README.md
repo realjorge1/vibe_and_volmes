@@ -77,4 +77,5 @@ community charts to bundled data.
 7. **Snackable sessions** — median 90–180 s; the Studio is the opt-in exception.
 8. **Cosmetic-only store** (`docs/passive-life/monetization-framework.md`).
 
-Regenerate the bundled beats with `node scripts/generate-beats.mjs`.
+Regenerate the bundled beats with `py scripts/beats/fetch_tools.py` (once) and then
+`py scripts/beats/make_beats.py` (see `assets/beats/README.md`).
